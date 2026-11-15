@@ -127,11 +127,12 @@ export default function Tree({
     resize();
 
     const draw = (now: number) => {
+      if (w === 0 || h === 0) resize();
       if (previous && now - previous < 32) {
         frame = requestAnimationFrame(draw);
         return;
       }
-      const dt = Math.min((now - previous) / 1000, 0.05);
+      const dt = previous ? Math.min((now - previous) / 1000, 0.05) : 0.016;
       previous = now;
       if (motion) phase.current += dt;
       const t = phase.current;

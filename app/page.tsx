@@ -60,7 +60,6 @@ export default function Home() {
     const timer = setInterval(() => void ping(false), 20000);
     return () => clearInterval(timer);
   }, []);
-  useEffect(() => { const media = matchMedia('(prefers-reduced-motion: reduce)'); const update = () => setMotion(!media.matches); update(); media.addEventListener('change', update); return () => media.removeEventListener('change', update); }, []);
   useEffect(() => { if (!motion) return; const timer = setInterval(() => setTick(t => t + 1), 350); return () => clearInterval(timer); }, [motion]);
   const startMusic = useCallback(async (index: number) => {
     let player = box.current;
