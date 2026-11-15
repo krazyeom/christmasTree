@@ -9,6 +9,7 @@ export const songs = [
   { title: 'Deck the Halls', subtitle: '아름답게 장식하세 · Welsh traditional melody', bpm: 112, notes: parse('79:1.5 77:0.5 76 74 72 74 76 72 74:0.5 76:0.5 77:0.5 74:0.5 76:1.5 74:0.5 72 71 72:2 79:1.5 77:0.5 76 74 72 74 76 72 74:0.5 76:0.5 77:0.5 74:0.5 76:1.5 74:0.5 72 71 72:2 74:1.5 76:0.5 77 74 76:1.5 77:0.5 79 74 76:0.5 78:0.5 79 81:0.5 83:0.5 84 83 81 79:2 79:1.5 77:0.5 76 74 72 74 76 72 81:0.5 81:0.5 81:0.5 81:0.5 79:1.5 77:0.5 76 74 72:4') },
   { title: 'Joy to the World', subtitle: '기쁘다 구주 오셨네 · Lowell Mason, 1836', bpm: 108, notes: parse('84:2 83:1.5 81:0.5 79:3 77 76:2 74:2 72:3 79 81:3 81 83:3 83 84:6 84 84 83 81 79 79:1.5 77:0.5 76 84 84 83 81 79 79:1.5 77:0.5 76 76 76 76 76:0.5 77:0.5 79:3 77:0.5 76:0.5 74 74 74 74:0.5 76:0.5 77:3 76:0.5 74:0.5 72 84:2 81 79:1.5 77:0.5 76 77 76:2 74:2 72:4') },
 ];
+
 export class MusicBox {
   private ctx: AudioContext;
   private gain: GainNode;
@@ -17,9 +18,9 @@ export class MusicBox {
   private index = 0;
   private song = 0;
   private closed = false;
-  private isScheduled = false;
+  private onSongChange?: (song: number) => void;
 
-  constructor(volume: number) {
+  constructor(volume: number, onSongChange?: (song: number) => void) {
     const AudioContextClass = typeof window !== 'undefined'
       ? (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)
       : AudioContext;
@@ -27,10 +28,15 @@ export class MusicBox {
     this.gain = this.ctx.createGain();
     this.gain.gain.value = volume * 0.32;
     this.gain.connect(this.ctx.destination);
+    this.onSongChange = onSongChange;
   }
 
   get isClosed(): boolean {
     return this.closed;
+  }
+
+  setOnSongChange(cb: (song: number) => void) {
+    this.onSongChange = cb;
   }
 
   volume(v: number) {
@@ -42,7 +48,6 @@ export class MusicBox {
     if (this.closed) return false;
     this.song = song;
     this.index = 0;
-    this.isScheduled = false;
 
     if (this.ctx.state === 'suspended') {
       let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -64,6 +69,18 @@ export class MusicBox {
   }
 
   /**
+   * 재생 중인 곡을 즉각 다른 곡으로 전환합니다.
+   */
+  changeSong(song: number) {
+    if (this.closed) return;
+    this.song = song;
+    this.index = 0;
+    if (this.ctx.state === 'running') {
+      this.startLoop();
+    }
+  }
+
+  /**
    * 사용자 제스처(클릭, 터치) 이벤트의 동기 콜스택에서 호출해야만 브라우저 오토플레이 언락이 보장됩니다.
    */
   unlockAndPlay(song?: number): Promise<boolean> {
@@ -73,7 +90,6 @@ export class MusicBox {
       this.index = 0;
     }
 
-    // 동기 콜스택에서 resume() 즉시 호출
     const resumePromise = this.ctx.resume();
 
     return resumePromise
@@ -86,9 +102,7 @@ export class MusicBox {
   }
 
   private startLoop() {
-    if (this.isScheduled) return;
     clearInterval(this.timer);
-    this.isScheduled = true;
     this.next = this.ctx.currentTime + 0.05;
     this.schedule();
     this.timer = setInterval(() => this.schedule(), 100);
@@ -111,21 +125,31 @@ export class MusicBox {
   }
 
   private schedule() {
-    const song = songs[this.song];
     while (this.next < this.ctx.currentTime + 0.3) {
+      const song = songs[this.song];
       const [note, beats] = song.notes[this.index];
-      const duration = beats * 60 / (song.bpm * christmasConfig.musicSpeed);
+      const duration = (beats * 60) / (song.bpm * christmasConfig.musicSpeed);
+
       this.bell(note, this.next, Math.max(0.6, duration * 1.7), 0.6);
-      if (this.index % 4 === 0) this.bell(this.index % 8 === 0 ? 48 : 55, this.next, 1.8, 0.3);
+      if (this.index % 4 === 0) {
+        this.bell(this.index % 8 === 0 ? 48 : 55, this.next, 1.8, 0.3);
+      }
+
       this.next += duration;
-      this.index = (this.index + 1) % song.notes.length;
-      if (!this.index) this.next += 0.9 / christmasConfig.musicSpeed;
+      this.index++;
+
+      // 현재 곡이 모두 끝나면 0.8초 여운 후 다음 곡으로 자동 연속 재생
+      if (this.index >= song.notes.length) {
+        this.next += 0.8 / christmasConfig.musicSpeed;
+        this.song = (this.song + 1) % songs.length;
+        this.index = 0;
+        this.onSongChange?.(this.song);
+      }
     }
   }
 
   close() {
     this.closed = true;
-    this.isScheduled = false;
     clearInterval(this.timer);
     if (this.ctx.state !== 'closed') {
       void this.ctx.close().catch(() => {});
