@@ -22,7 +22,7 @@ async function choosePort() {
 }
 if (command === 'build') { run(next, ['build']); }
 else if (command === 'stop') {
-  if (!existsSync(path.join(env.PM2_HOME, 'pm2.pid'))) { console.log('Christmas Tree is already stopped.'); process.exit(0); }
+  if (!existsSync(path.join(env.PM2_HOME, 'pm2.pid')) && !existsSync(path.join(env.PM2_HOME, 'rpc.sock'))) { console.log('Christmas Tree is already stopped.'); process.exit(0); }
   run(pm2, ['kill']); console.log('Christmas Tree stopped (project-local PM2 daemon).');
 } else if (command === 'start' || command === 'dev') {
   if (command === 'start') {
