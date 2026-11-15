@@ -1,0 +1,44 @@
+# Dependencies and generated output
+node_modules/
+.next/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+# Secrets and machine-specific configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+.npmrc
+.netrc
+.ssh/
+.aws/
+.credentials/
+credentials*.json
+service-account*.json
+secrets/
+# Local process data (may contain environment variables)
+.runtime/
+.pm2/
+logs/
+*.log
+*.pid
+# Editor, OS, local agents and personal notes
+.DS_Store
+.idea/
+.vscode/
+.codex/
+.agents/
+*.local
+*.local.*
+*.swp
+*.swo
+*.bak
+*.sqlite*
+*.db
