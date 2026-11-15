@@ -21,6 +21,27 @@ export default function Tree({ theme, snow, motion, burst, recipient, variant }:
       const halo = ctx.createRadialGradient(cx, h * .56, 0, cx, h * .56, 300 * scale); halo.addColorStop(0, p.glow + '65'); halo.addColorStop(1, p.glow + '00'); ctx.fillStyle = halo; ctx.fillRect(0, 0, w, h);
       if (snow) { ctx.font = `${11 * scale}px monospace`; for (let i = 0; i < christmasConfig.snowCount; i++) { const x = ((i * 137.51 + Math.sin(t * .3 + i) * 25) % w + w) % w; const y = (i * 71.71 + t * christmasConfig.snowSpeed * (10 + i % 16)) % h; ctx.globalAlpha = .15 + (i % 5) * .1; ctx.fillStyle = '#d1eee2'; ctx.fillText(i % 7 === 0 ? '+' : '.', x, y); } }
       ctx.globalAlpha = 1;
+      const festiveColors = ['#ff658c', '#ffd66b', '#a98aff', '#65c9ff', '#ff995b', '#6ff0bf'];
+      const rotation = t * .22;
+      const drawGifts = (front: boolean) => {
+        if (!burst) return;
+        const gifts = Array.from({ length: 6 }, (_, i) => {
+          const angle = i / 6 * Math.PI * 2 + rotation;
+          return { i, angle, z: Math.cos(angle) };
+        }).filter(gift => (gift.z >= 0) === front).sort((a, b) => a.z - b.z);
+        for (const gift of gifts) {
+          const size = .8 + (gift.z + 1) * .12;
+          ctx.save();
+          ctx.translate(cx + Math.sin(gift.angle) * 195 * scale, top + (520 + gift.z * 31) * scale);
+          ctx.scale(size * (.72 + Math.abs(Math.cos(gift.angle + .5)) * .28), size);
+          ctx.globalAlpha = build * (.65 + (gift.z + 1) * .175);
+          ctx.fillStyle = festiveColors[gift.i]; ctx.shadowColor = festiveColors[gift.i]; ctx.shadowBlur = 12 * scale;
+          ctx.font = `${10 * scale}px monospace`; ctx.textAlign = 'center';
+          ['  >*<  ', '+==+==+', '|##|##|', '|##|##|', '+==+==+'].forEach((line, j) => ctx.fillText(line, 0, j * 9 * scale));
+          ctx.restore();
+        }
+      };
+      drawGifts(false);
       const points: {x:number;y:number;z:number;char:string;color:string;light:boolean}[] = [];
       const rows = variant === 'pixel' ? 42 : 64;
       for (let row = 0; row < rows; row++) {
@@ -40,9 +61,9 @@ export default function Tree({ theme, snow, motion, burst, recipient, variant }:
           let x = Math.sin(a) * radius;
           let depth = z * 17;
           const ribbon = Math.sin(localAngle - v * 31);
-          const ornament = ((row % 11 < 3) && Math.cos(a * 4 + Math.floor(row / 11) * 2.3) > .91);
+          const ornament = ((row % 11 < 3) && Math.cos((localAngle + row * .19) * 4 + Math.floor(row / 11) * 2.3) > .91);
           if (variant === 'classic') {
-            const garland = Math.sin(a - v * 28) > .965;
+            const garland = Math.sin(localAngle + row * .19 - v * 28) > .965;
             light = ornament || garland;
             char = ornament ? '@' : garland ? '*' : char;
             color = ornament ? ['#ff6b99','#ffe7a5','#ba8bff','#7bbaff'][Math.floor(row / 3) % 4] : garland ? '#f8dca2' : p.color;
@@ -82,6 +103,24 @@ export default function Tree({ theme, snow, motion, burst, recipient, variant }:
           points.push({ x: cx + x * scale, y: top + (65 + v * 440 + depth) * scale, z, char, color, light });
         }
       }
+      // Ornament positions live in tree coordinates so their colors rotate with the branches.
+      for (let ring = 0; ring < 9; ring++) {
+        const v = .14 + ring * .095;
+        if (v < 1 - build) continue;
+        const row = Math.round(v * (rows - 1));
+        const radius = variant === 'classic' ? (12 + v * 176) * (1 - .11 * Math.sin(v * Math.PI * 8))
+          : variant === 'pixel' ? (16 + Math.floor(v * 7) * 24) * .92 : 9 + v * 179;
+        for (let j = 0; j < 7; j++) {
+          const angle = j / 7 * Math.PI * 2 + ring * 1.37 + rotation;
+          const z = Math.cos(angle);
+          const x = cx + Math.sin(angle) * (radius + 3) * scale;
+          const y = top + (65 + v * 440 + z * 18) * scale;
+          const color = festiveColors[(ring * 3 + j) % festiveColors.length];
+          const shape = ['(@)', '<*>', '[+]', '{o}'][(ring + j) % 4];
+          for (let k = 0; k < shape.length; k++) points.push({ x: x + (k - 1) * 5 * scale, y, z: z + .03, char: shape[k], color, light: true });
+          points.push({ x, y: y - 7 * scale, z: z + .03, char: '|', color: '#ffe6a3', light: true });
+        }
+      }
       points.sort((a,b) => a.z - b.z);
       ctx.textAlign = 'center'; ctx.font = `${9 * scale}px monospace`;
       for (const point of points) { ctx.globalAlpha = point.light ? .6 + .4 * Math.sin(t * 1.8 + point.y) ** 2 : .18 + (point.z + 1) * .31; ctx.fillStyle = point.color; ctx.shadowColor = point.color; ctx.shadowBlur = point.light ? 9 * scale : 0; ctx.fillText(point.char, point.x, point.y);
@@ -99,13 +138,12 @@ export default function Tree({ theme, snow, motion, burst, recipient, variant }:
           const x = w * (.07 + .86 * ((i * .618) % 1)) + Math.sin(t * .6 + i) * 12 * scale;
           const y = motion ? progress - 70 : h * (.2 + i * .09);
           ctx.globalAlpha = .65; ctx.fillStyle = colors[i % 4]; ctx.shadowColor = colors[i % 4]; ctx.shadowBlur = 9 * scale; ctx.font = `${9 * scale}px monospace`;
-          ['  _><_  ', '+--+--+', '|::|::|', '+--+--+'].forEach((line,j) => ctx.fillText(line,x,y+j*8*scale));
+          ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(t * 1.5 + i) * .25); ctx.scale(.7 + Math.abs(Math.cos(rotation + i)) * .3, 1);
+          ['  _><_  ', '+--+--+', '|::|::|', '+--+--+'].forEach((line,j) => ctx.fillText(line,0,j*8*scale)); ctx.restore();
         }
-        for (let i = 0; i < 3; i++) {
-          ctx.globalAlpha = build; ctx.fillStyle = colors[i]; ctx.shadowColor = colors[i]; ctx.shadowBlur = 14 * scale; ctx.font = `${10 * scale}px monospace`;
-          ['  >*<  ', '+==+==+', '|##|##|', '|##|##|', '+==+==+'].forEach((line,j) => ctx.fillText(line,cx+(i-1)*150*scale,top+(520+j*9)*scale));
-        }
+
       }
+      drawGifts(true);
       if (t > christmasConfig.greetingAppearsAfterSeconds || !motion) {
         ctx.globalAlpha = motion ? Math.min(1,(t-christmasConfig.greetingAppearsAfterSeconds)/2) : 1;
         ctx.font = `600 ${Math.min(19 * scale, w / Math.max(22, (christmasConfig.greeting.length + recipient.length + 1) * .64))}px monospace`;
