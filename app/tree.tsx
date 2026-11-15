@@ -152,8 +152,35 @@ export default function Tree({ theme, snow, motion, burst, recipient, variant }:
         ctx.font = `${9 * scale}px monospace`; ctx.fillStyle = '#99b4ab'; ctx.shadowBlur = 0;
         ctx.fillText('* . +  MAY ALL YOUR WISHES GLOW  + . *',cx,top+641*scale);
       }
+      // A quick shooting-star flight, with an ASCII sleigh, presents and Rudolph.
+      const flight = (t % 11) / 3.4;
+      if (motion && flight < 1) {
+        const size = Math.max(.65, Math.min(1, scale * 1.15));
+        const x = -210 * size + flight * (w + 340 * size);
+        const y = h * .10 + flight * h * .16;
+        const bob = Math.sin(t * 15) * 2 * size;
+        ctx.save();
+        ctx.translate(x, y + bob);
+        ctx.textAlign = 'left'; ctx.font = `bold ${10 * size}px monospace`;
+        ctx.shadowBlur = 10 * size;
+        // Sparkling trail fades away behind the sleigh.
+        for (let i = 0; i < 15; i++) {
+          ctx.globalAlpha = (1 - i / 15) * .75;
+          ctx.fillStyle = i % 3 === 0 ? '#ffb4c4' : '#ffe2a3';
+          ctx.shadowColor = ctx.fillStyle;
+          ctx.fillText(i % 4 === 0 ? '*' : '.', -i * 9 * size, Math.sin(i * 2 + t * 12) * 8 * size);
+        }
+        ctx.globalAlpha = 1; ctx.fillStyle = '#ffcc8b'; ctx.shadowColor = '#f6c97e';
+        const sleigh = [String.raw`  _/\_  [*][+]       \ /`, String.raw` (o_o)  |__|__|       Y`, String.raw` /|_|\__|_____|___  _/\_`, String.raw`  / \  \_________/--(o o)>`, String.raw`        \_______/    / \ `];
+        sleigh.forEach((line, i) => ctx.fillText(line, 0, i * 10 * size));
+        // Rudolph's red nose and Santa's hat stand out on the monochrome silhouette.
+        ctx.fillStyle = '#ff526b'; ctx.shadowColor = '#ff526b'; ctx.shadowBlur = 12 * size;
+        ctx.fillText('*', 155 * size, 30 * size);
+        ctx.fillText('^', 19 * size, 0);
+        ctx.restore();
+      }
       ctx.globalAlpha = 1; frame = requestAnimationFrame(draw);
     }; frame = requestAnimationFrame(draw); return () => { cancelAnimationFrame(frame); observer.disconnect(); };
   }, [theme, snow, motion, burst, recipient, variant]);
-  return <canvas ref={ref} className="tree-canvas" role="img" aria-label={`${treeStyles.find(style => style.id === variant)?.description}. 회전하는 입체 ASCII 크리스마스 트리`} />;
+  return <canvas ref={ref} className="tree-canvas" role="img" aria-label={`${treeStyles.find(style => style.id === variant)?.description}. 회전하는 입체 ASCII 크리스마스 트리와 하늘을 날아가는 산타 썰매`} />;
 }
