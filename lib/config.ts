@@ -2,8 +2,8 @@
 export const christmasConfig = {
   greeting: 'Happy Christmas',
   recipient: 'LTC',
-  greetingAppearsAfterSeconds: 3,
-  treeBuildSeconds: 5,
+  greetingAppearsAfterSeconds: 2.2,
+  treeBuildSeconds: 2.4, // 트리가 밑에서부터 올라오는 속도 (기존 5초 -> 2.4초로 고속화)
   rotationSpeed: 0.33, // 회전 속도 (라디안/초)
   snowCount: 230,
   snowSpeed: 3.1,
