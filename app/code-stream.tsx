@@ -80,7 +80,7 @@ export default function CodeStream({
         <span className="terminal-title">
           <b className="dots">● ● ●</b>
           <span className="file-tab">app/tree.tsx</span>
-          <span className="file-info">· 198 lines · {styleName}</span>
+          <span className="file-info">· {treeSourceCode.length} lines · {styleName}</span>
         </span>
         <span className="running">
           <i /> {motion ? 'streaming' : 'paused'} <span>· TypeScript</span>
