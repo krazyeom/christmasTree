@@ -63,20 +63,26 @@ export class MusicBox {
     return true;
   }
 
-  async resume(): Promise<boolean> {
-    if (this.closed) return false;
-    if (this.ctx.state === 'suspended') {
-      try {
-        await this.ctx.resume();
-      } catch {
-        return false;
-      }
+  /**
+   * 사용자 제스처(클릭, 터치) 이벤트의 동기 콜스택에서 호출해야만 브라우저 오토플레이 언락이 보장됩니다.
+   */
+  unlockAndPlay(song?: number): Promise<boolean> {
+    if (this.closed) return Promise.resolve(false);
+    if (typeof song === 'number') {
+      this.song = song;
+      this.index = 0;
     }
-    if (this.ctx.state === 'running') {
-      this.startLoop();
-      return true;
-    }
-    return false;
+
+    // 동기 콜스택에서 resume() 즉시 호출
+    const resumePromise = this.ctx.resume();
+
+    return resumePromise
+      .then(() => {
+        if (this.closed || this.ctx.state !== 'running') return false;
+        this.startLoop();
+        return true;
+      })
+      .catch(() => false);
   }
 
   private startLoop() {
@@ -119,6 +125,7 @@ export class MusicBox {
 
   close() {
     this.closed = true;
+    this.isScheduled = false;
     clearInterval(this.timer);
     if (this.ctx.state !== 'closed') {
       void this.ctx.close().catch(() => {});

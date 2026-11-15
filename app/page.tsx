@@ -41,42 +41,42 @@ export default function Home() {
     // 1. 페이지 진입 즉시 자동 재생 시도
     void startMusic(0);
 
-    // 2. 브라우저 보안 정책으로 suspended된 경우, 사용자의 첫 제스처 발생 즉시 0ms 언락
-    const unlock = async () => {
-      if (!autoplayWanted.current) return;
-      autoplayWanted.current = false;
+    // 2. 브라우저 보안 정책으로 suspended된 경우, 화면 전체 첫 제스처에서 동기식 즉각 언락
+    const handleGesture = (e: Event) => {
+      if (e.target instanceof Element && e.target.closest('input, textarea, select')) return;
       const player = box.current;
       if (player && !player.isClosed) {
-        const ok = await player.resume();
-        if (ok) {
-          setPlaying(true);
-          setAutoplayPending(false);
-          cleanup();
-          return;
-        }
+        player.unlockAndPlay(song).then(started => {
+          if (started) {
+            setPlaying(true);
+            setAutoplayPending(false);
+            cleanup();
+          }
+        });
+      } else {
+        void startMusic(song);
+        cleanup();
       }
-      void startMusic(0);
-      cleanup();
     };
 
     const cleanup = () => {
-      window.removeEventListener('pointerdown', unlock);
-      window.removeEventListener('touchstart', unlock);
-      window.removeEventListener('mousedown', unlock);
-      window.removeEventListener('keydown', unlock);
+      document.removeEventListener('pointerdown', handleGesture, true);
+      document.removeEventListener('click', handleGesture, true);
+      document.removeEventListener('touchstart', handleGesture, true);
+      document.removeEventListener('keydown', handleGesture, true);
     };
 
-    window.addEventListener('pointerdown', unlock, { passive: true });
-    window.addEventListener('touchstart', unlock, { passive: true });
-    window.addEventListener('mousedown', unlock, { passive: true });
-    window.addEventListener('keydown', unlock, { passive: true });
+    document.addEventListener('pointerdown', handleGesture, true);
+    document.addEventListener('click', handleGesture, true);
+    document.addEventListener('touchstart', handleGesture, true);
+    document.addEventListener('keydown', handleGesture, true);
 
     return () => {
       cleanup();
       box.current?.close();
       box.current = null;
     };
-  }, [startMusic]);
+  }, [startMusic, song]);
   function toggleMusic() {
     autoplayWanted.current = false; setAutoplayPending(false);
     if (playing) { box.current?.close(); box.current = null; setPlaying(false); }
@@ -87,9 +87,32 @@ export default function Home() {
     <header><a className="brand" href="/" aria-label="ASCII Christmas 홈"><span className="brand-star">✳</span><span>little christma<span className="sig-accent">s</span><span className="brand-sub">A <span className="sig-accent">W</span>ONDERLAND IN CHARACTERS</span></span></a><div className="edition"><i /> CHRISTMAS EDITION <span> / 2026</span></div></header>
     <section className="intro"><div className="eyebrow">A LITTLE CODE. A LITTLE MAGIC.</div><h1>Ever<span className="sig-accent">y</span> character, <em>a little <span className="sig-accent">w</span>ish.</em></h1><p>작은 문자들이 모여, 당신만의 크리스마스가 됩니다.</p></section>
     <section className="wonderland" aria-label="인터랙티브 크리스마스 트리">
-      <div className="stage-top"><span><i /> LIVE ASCII WONDERLAND</span><button onClick={fullscreen} title="전체 화면" aria-label="전체 화면 전환">⛶</button></div>
+      <div className="stage-top">
+        <div className="stage-top-left">
+          <span><i /> LIVE ASCII WONDERLAND</span>
+          {!playing && (
+            <button className="quick-sound-btn" onClick={() => void startMusic(song)} aria-label="크리스마스 캐럴 켜기">
+              ♪ 캐럴 켜기
+            </button>
+          )}
+        </div>
+        <div className="stage-top-right">
+          {playing && (
+            <button className="sound-status-pill" onClick={toggleMusic} aria-label="캐럴 일시정지">
+              ♫ {songs[song].title}
+            </button>
+          )}
+          <button onClick={fullscreen} title="전체 화면" aria-label="전체 화면 전환">⛶</button>
+        </div>
+      </div>
       <div className="style-picker" role="group" aria-label="트리 버전 선택">{treeStyles.map(style => <button key={style.id} aria-pressed={variant === style.id} title={style.description} onClick={() => { setVariant(style.id); setReplay(v => v + 1); setTick(0); }}><span>{style.icon}</span>{style.name}</button>)}</div>
-      <div className="scene"><Tree variant={variant} key={replay} theme={theme} snow={snow} motion={motion} burst={burst} recipient={recipient} />
+      <div className="scene" onClick={() => { if (!playing) void startMusic(song); setBurst(b => b ? b : 1); }}>
+        <Tree variant={variant} key={replay} theme={theme} snow={snow} motion={motion} burst={burst} recipient={recipient} />
+        {!playing && autoplayPending && (
+          <div className="scene-hint" role="button" aria-label="음악 재생 시작">
+            ♪ 화면을 클릭하면 크리스마스 캐럴이 시작돼요
+          </div>
+        )}
         <div className="telemetry" aria-hidden="true"><span>{currentStyle.label}</span><span>renderer WebGL-free / ASCII</span><span>rotation {((tick * .35 * christmasConfig.rotationSpeed * 180 / Math.PI) % 360).toFixed(1)}°</span><span>magic {motion ? 'in progress' : 'paused'}</span></div>
         <div className="scene-note">MADE OF LETTERS & LOVE</div>
       </div>
