@@ -8,7 +8,7 @@ Next.js / React / TypeScript로 만든 인터랙티브 ASCII 크리스마스 트
 - 눈, 떨어지는 ASCII 선물, 바닥 반사, 3가지 색상 테마
 - 4초부터 나타나는 `Happy Christmas LTC` 인사말
 - 장식용 JavaScript 코드 스크롤, 모바일 반응형 화면
-- 직접 합성한 Jingle Bells / Silent Night 오르골, 음량 조절
+- 직접 합성한 Jingle Bells / Silent Night / Deck the Halls / Joy to the World 오르골, 음량 조절
 - 애니메이션 정지·다시 만들기·전체 화면, reduced-motion 지원
 
 ## 실행
@@ -54,10 +54,12 @@ export const christmasConfig = {
 
 ## 음악과 출처
 
-외부 녹음, 샘플, 스트리밍 음원은 사용하지 않습니다. 퍼블릭 도메인 원곡의 멜로디를 Web Audio API로 직접 합성한 간단한 오르골 편곡입니다. 브라우저 정책에 따라 재생 버튼을 누른 뒤에만 소리가 납니다.
+외부 녹음, 샘플, 스트리밍 음원은 사용하지 않습니다. 퍼블릭 도메인 원곡의 멜로디를 Web Audio API로 직접 합성한 간단한 오르골 편곡입니다. 페이지가 열리면 음악 자동 재생을 시도합니다. 브라우저가 자동 재생을 제한하면 화면의 첫 클릭·터치 또는 Enter/Space 입력으로 재생합니다. 수동 일시 정지 후에는 다른 곳을 터치해도 다시 시작하지 않습니다.
 
 - Jingle Bells — James Lord Pierpont (1857): [Johns Hopkins 원본 악보 자료](https://levysheetmusic.mse.jhu.edu/collection/062/029)
 - Silent Night — Franz Xaver Gruber (1818): [Silent Night Association](https://www.stillenacht.at/en/)
+- Deck the Halls — 전통 웨일스 선율
+- Joy to the World — Lowell Mason (1836)
 - 새로 작성한 합성 편곡/음표 데이터는 이 저장소의 ISC 라이선스로 제공합니다. 오래된 원곡과 현대의 녹음물 권리는 별개입니다.
 
 시각 참고: 사용자가 제공한 Instagram 릴스 스크린샷. 원본 동영상 및 타인의 코드는 포함하지 않습니다.
