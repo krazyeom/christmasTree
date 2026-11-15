@@ -1,3 +1,5 @@
+import { christmasConfig } from './config';
+
 // Original synthesized arrangements of public-domain melodies. No sampled recordings.
 type Note = [number, number];
 const parse = (s: string): Note[] => s.split(' ').map(v => { const [n, d] = v.split(':'); return [Number(n), Number(d || 1)]; });
@@ -18,6 +20,6 @@ export class MusicBox {
   private bell(midi: number, when: number, length: number, strength: number) {
     [1, 2, 3].forEach((harmonic, i) => { const osc = this.ctx.createOscillator(); const env = this.ctx.createGain(); osc.frequency.value = 440 * 2 ** ((midi - 69) / 12) * harmonic; env.gain.setValueAtTime(0, when); env.gain.linearRampToValueAtTime(strength / (1 + i * 5), when + .008); env.gain.exponentialRampToValueAtTime(.0001, when + length); osc.connect(env); env.connect(this.gain); osc.start(when); osc.stop(when + length + .02); osc.onended = () => { osc.disconnect(); env.disconnect(); }; });
   }
-  private schedule() { const song = songs[this.song]; while (this.next < this.ctx.currentTime + .3) { const [note, beats] = song.notes[this.index]; const duration = beats * 60 / song.bpm; this.bell(note, this.next, Math.max(.6, duration * 1.7), .6); if (this.index % 4 === 0) this.bell(this.index % 8 === 0 ? 48 : 55, this.next, 1.8, .3); this.next += duration; this.index = (this.index + 1) % song.notes.length; if (!this.index) this.next += .9; } }
+  private schedule() { const song = songs[this.song]; while (this.next < this.ctx.currentTime + .3) { const [note, beats] = song.notes[this.index]; const duration = beats * 60 / (song.bpm * christmasConfig.musicSpeed); this.bell(note, this.next, Math.max(.6, duration * 1.7), .6); if (this.index % 4 === 0) this.bell(this.index % 8 === 0 ? 48 : 55, this.next, 1.8, .3); this.next += duration; this.index = (this.index + 1) % song.notes.length; if (!this.index) this.next += .9 / christmasConfig.musicSpeed; } }
   close() { clearInterval(this.timer); void this.ctx.close(); }
 }

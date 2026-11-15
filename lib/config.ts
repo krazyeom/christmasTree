@@ -7,4 +7,5 @@ export const christmasConfig = {
   snowCount: 230,
   snowSpeed: 2.6,
   giftSpeed: 2.1,
+  musicSpeed: 1.4, // 캐럴 재생 속도 (1 = 원래 속도)
 };

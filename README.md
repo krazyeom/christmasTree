@@ -46,6 +46,7 @@ export const christmasConfig = {
   snowCount: 230, // 눈의 개수
   snowSpeed: 2.6, // 눈 속도 배율
   giftSpeed: 2.1, // 선물 속도 배율
+  musicSpeed: 1.4, // 캐럴 속도 배율
 };
 ```
 
