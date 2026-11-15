@@ -51,8 +51,7 @@ export default function Tree({ theme, snow, motion, burst, recipient, variant }:
           ? (12 + v * 176) * (1 - .11 * Math.sin(v * Math.PI * 8))
           : variant === 'pixel' ? 16 + Math.floor(v * 7) * 24 : 9 + v * 179;
         const count = Math.floor(12 + v * (variant === 'pixel' ? 62 : 100));
-        const signatureChars = new Set(['y', 's', 'w', 'Y', 'S', 'W']);
-        const signatureList = ['Y', 'S', 'W', 'y', 's', 'w'];
+        const specialList = ['d', 'y', 's', 'w', 'D', 'Y', 'S', 'W'];
         for (let j = 0; j < count; j++) {
           const localAngle = j / count * Math.PI * 2;
           const a = localAngle + rotation + (variant === 'classic' ? row * .19 : 0);
@@ -65,10 +64,10 @@ export default function Tree({ theme, snow, motion, burst, recipient, variant }:
           const ribbon = Math.sin(localAngle - v * 31);
           const ornament = ((row % 11 < 3) && Math.cos((localAngle + row * .19) * 4 + Math.floor(row / 11) * 2.3) > .91);
 
-          // 주기적으로 Y, S, W 시그니처 문자를 트리에 매혹적으로 배치
-          const isSigSlot = (row * 13 + j * 7) % 19 === 0 || (j % 11 === 3 && row % 5 === 0);
+          // d, y (레드)와 s, w (골드) 시그니처 문자를 트리에 매혹적으로 분산 배치
+          const isSigSlot = (row * 13 + j * 7) % 17 === 0 || (j % 9 === 2 && row % 4 === 0);
           if (isSigSlot) {
-            char = signatureList[(row + j) % signatureList.length];
+            char = specialList[(row * 3 + j) % specialList.length];
             light = true;
           }
 
@@ -138,22 +137,33 @@ export default function Tree({ theme, snow, motion, burst, recipient, variant }:
           const x = cx + Math.sin(angle) * (radius + 3) * scale;
           const y = top + (65 + v * 440 + z * 18) * scale;
           const color = festiveColors[(ring * 3 + j) % festiveColors.length];
-          const shape = ['(@)', '<*>', '[+]', '{o}', '(Y)', '{S}', '<W>'][(ring + j) % 7];
+          const shape = ['(@)', '<*>', '[+d]', '{y}', '(Y)', '{S}', '<W>'][(ring + j) % 7];
           for (let k = 0; k < shape.length; k++) points.push({ x: x + (k - 1) * 5 * scale, y, z: z + .03, char: shape[k], color, light: true });
           points.push({ x, y: y - 7 * scale, z: z + .03, char: '|', color: '#ffe6a3', light: true });
         }
       }
       points.sort((a,b) => a.z - b.z);
       ctx.textAlign = 'center';
-      const sigChars = new Set(['y', 's', 'w', 'Y', 'S', 'W']);
+      const redSigChars = new Set(['d', 'y', 'D', 'Y']);
+      const goldSigChars = new Set(['s', 'w', 'S', 'W']);
       for (const point of points) {
-        const isSig = sigChars.has(point.char);
-        if (isSig) {
-          const shimmer = Math.sin(t * 4.5 + point.x * 0.05 + point.y * 0.07) ** 2;
-          ctx.globalAlpha = Math.min(1, 0.75 + shimmer * 0.25);
-          ctx.fillStyle = shimmer > 0.6 ? '#fff3d1' : '#E09F3E';
-          ctx.shadowColor = '#ffd166';
-          ctx.shadowBlur = (14 + shimmer * 12) * scale;
+        const isRedSig = redSigChars.has(point.char);
+        const isGoldSig = goldSigChars.has(point.char);
+        if (isRedSig) {
+          const shimmer = Math.sin(t * 5.2 + point.x * 0.05 + point.y * 0.07) ** 2;
+          ctx.globalAlpha = Math.min(1, 0.8 + shimmer * 0.2);
+          ctx.fillStyle = shimmer > 0.65 ? '#ffe0e8' : '#ff2e56';
+          ctx.shadowColor = '#ff2a55';
+          ctx.shadowBlur = (15 + shimmer * 14) * scale;
+          ctx.font = `bold ${10.5 * scale}px monospace`;
+          ctx.fillText(point.char, point.x, point.y);
+          ctx.font = `${9 * scale}px monospace`;
+        } else if (isGoldSig) {
+          const shimmer = Math.sin(t * 4.2 + point.x * 0.06 + point.y * 0.05) ** 2;
+          ctx.globalAlpha = Math.min(1, 0.8 + shimmer * 0.2);
+          ctx.fillStyle = shimmer > 0.65 ? '#ffffff' : '#ffd166';
+          ctx.shadowColor = '#ffe082';
+          ctx.shadowBlur = (15 + shimmer * 14) * scale;
           ctx.font = `bold ${10.5 * scale}px monospace`;
           ctx.fillText(point.char, point.x, point.y);
           ctx.font = `${9 * scale}px monospace`;

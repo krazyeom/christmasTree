@@ -27,8 +27,8 @@ function loadData(): VisitorData {
     // ignore parse error
   }
   return {
-    total: 1042, // 기본 시작 카운트 (크리스마스 시즌 기념)
-    today: 87,
+    total: 1, // 실제 방문자 카운트 (실제 1부터 누적)
+    today: 1,
     lastDate: todayStr,
     sessions: {},
   };
@@ -45,7 +45,7 @@ function saveData(data: VisitorData) {
 
 function getActiveCount(sessions: { [id: string]: number }): number {
   const now = Date.now();
-  const threshold = now - 120 * 1000; // 최근 2분 이내 활성
+  const threshold = now - 120 * 1000; // 최근 2분(120초) 이내 활성 세션
   let count = 0;
   for (const id in sessions) {
     if (sessions[id] > threshold) {
@@ -54,7 +54,7 @@ function getActiveCount(sessions: { [id: string]: number }): number {
       delete sessions[id]; // 만료 세션 정리
     }
   }
-  return Math.max(1, count); // 현재 보는 사람 최소 1명
+  return Math.max(1, count); // 현재 열람 중인 사용자 최소 1명
 }
 
 export async function GET() {
@@ -85,6 +85,7 @@ export async function POST(req: Request) {
   const isNewSession = !data.sessions[sessionId];
   data.sessions[sessionId] = Date.now();
 
+  // 브라우저 최초 세션 방문 시에만 누적 증가 (새로고침 시 무한 증가 방지)
   if (isNewSession) {
     data.total += 1;
     data.today += 1;

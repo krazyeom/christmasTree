@@ -15,8 +15,8 @@ export default function Home() {
   const volumeRef = useRef(.45);
   const [tick, setTick] = useState(0); const box = useRef<MusicBox | null>(null);
   const [visitors, setVisitors] = useState<{ total: number; today: number; active: number }>({
-    total: 1042,
-    today: 87,
+    total: 1,
+    today: 1,
     active: 1,
   });
 
@@ -125,8 +125,8 @@ export default function Home() {
       <a className="brand" href="/" aria-label="ASCII Christmas 홈">
         <span className="brand-star">✳</span>
         <span>
-          little christma<span className="sig-accent">s</span>
-          <span className="brand-sub">A <span className="sig-accent">W</span>ONDERLAND IN CHARACTERS</span>
+          little christma<span className="sig-gold">s</span>
+          <span className="brand-sub">A <span className="sig-gold">W</span>ON<span className="sig-red">D</span>ERLAN<span className="sig-red">D</span> IN CHARACTERS</span>
         </span>
       </a>
       <div className="header-meta">
@@ -141,7 +141,7 @@ export default function Home() {
     </header>
     <section className="intro">
       <div className="eyebrow">✧ A LITTLE CODE. A LITTLE MAGIC. ✧</div>
-      <h1>Ever<span className="sig-accent">y</span> character, <em>a little <span className="sig-accent">w</span>ish.</em></h1>
+      <h1>Ever<span className="sig-red">y</span> character, <em>a little <span className="sig-gold">w</span>ish.</em></h1>
       <p>작은 문자들이 모여, 당신만의 크리스마스가 됩니다.</p>
     </section>
     <section className="wonderland" aria-label="인터랙티브 크리스마스 트리">
@@ -187,6 +187,6 @@ export default function Home() {
     <section className="bottom-row"><div className="music-player" data-music-controls><button className={`play ${!playing && autoplayPending ? 'pulse' : ''}`} aria-label={playing ? '캐럴 일시 정지' : '캐럴 재생'} onClick={toggleMusic}>{playing ? 'Ⅱ' : '▶'}</button><div className="song-info"><span className="eyebrow">A CHRISTMAS MUSIC BOX</span><select aria-label="캐럴 선택" value={song} onChange={e => { const n = Number(e.target.value); setSong(n); if (playing && box.current && !box.current.isClosed) { box.current.changeSong(n); } else { void startMusic(n); } }}>{songs.map((s,i) => <option value={i} key={s.title}>{s.title}</option>)}</select><small>{playing ? '직접 합성한 오르골 연주' : autoplayPending ? '화면 어디든 터치하거나 재생(▶)을 누르면 바로 시작돼요' : '재생을 눌러 크리스마스를 들어보세요'}</small></div><div className={'equalizer ' + (playing ? 'on' : '')} aria-hidden="true">{[0,1,2,3,4].map(i => <i key={i} style={{animationDelay:`${i * .16}s`}} />)}</div><label className="volume">♪<input aria-label="음악 음량" type="range" min="0" max="1" step=".01" value={volume} onChange={e => { const v = Number(e.target.value); setVolume(v); volumeRef.current = v; box.current?.volume(v); }} /></label></div><button className="edit-wish" onClick={() => setEditing(!editing)}>✎ <span>나만의 인사말</span> <span>↗</span></button></section>
     {editing && <form className="wish-editor" onSubmit={e => { e.preventDefault(); setEditing(false); }}><label htmlFor="recipient">{christmasConfig.greeting} 뒤에 올 문구</label><div><input id="recipient" maxLength={30} value={recipient} onChange={e => setRecipient(e.target.value)} placeholder="LTC" /><button type="submit">완료</button></div></form>}
     {error && <p role="status" className="error">{error}</p>}
-    <footer><span><span className="sig-accent">W</span>ishing <span className="sig-accent">y</span>ou a <span className="sig-accent">s</span>eason full of little <span className="sig-accent">w</span>onders.</span><span>CRAFTED WITH CODE &amp; <b>♥</b> <a href="https://github.com/krazyeom/" target="_blank" rel="noopener noreferrer">kraz<span className="sig-accent">y</span>eom</a> · <a href="https://github.com/krazyeom/christmasTree" target="_blank" rel="noopener noreferrer">GitHub ↗</a> · <a href="https://cafe.naver.com/hexenyang/" target="_blank" rel="noopener noreferrer">LTC ↗</a></span></footer>
+    <footer><span><span className="sig-gold">W</span>ishing <span className="sig-red">y</span>ou a <span className="sig-gold">s</span>eason full of little <span className="sig-gold">w</span>on<span className="sig-red">d</span>ers.</span><span>CRAFTED WITH CODE &amp; <b>♥</b> <a href="https://github.com/krazyeom/" target="_blank" rel="noopener noreferrer">kraz<span className="sig-red">y</span>eom</a> · <a href="https://github.com/krazyeom/christmasTree" target="_blank" rel="noopener noreferrer">GitHub ↗</a> · <a href="https://cafe.naver.com/hexenyang/" target="_blank" rel="noopener noreferrer">LTC ↗</a></span></footer>
   </main>;
 }
