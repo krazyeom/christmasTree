@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import Tree, { palettes } from './tree';
+import Tree, { palettes, type TreeTopper } from './tree';
 import CodeStream from './code-stream';
 import { MusicBox, songs } from '@/lib/music';
 import { christmasConfig } from '@/lib/config';
@@ -8,17 +8,32 @@ import { treeStyles, type TreeStyle } from '@/lib/tree-styles';
 export default function Home() {
   const [variant, setVariant] = useState<TreeStyle>('classic');
   const currentStyle = treeStyles.find(style => style.id === variant)!;
-  const [theme, setTheme] = useState(0); const [snow, setSnow] = useState(true); const [motion, setMotion] = useState(true); const [burst, setBurst] = useState(1); const [replay, setReplay] = useState(0);
-  const [playing, setPlaying] = useState(false); const [song, setSong] = useState(0); const [volume, setVolume] = useState(.45); const [recipient, setRecipient] = useState<string>(christmasConfig.recipient); const [editing, setEditing] = useState(false); const [error, setError] = useState('');
+  const [theme, setTheme] = useState(0);
+  const [snow, setSnow] = useState(true);
+  const [motion, setMotion] = useState(true);
+  const [burst, setBurst] = useState(1);
+  const [replay, setReplay] = useState(0);
+  const [topper, setTopper] = useState<TreeTopper>('red-apple');
+  const [playing, setPlaying] = useState(false);
+  const [song, setSong] = useState(0);
+  const [volume, setVolume] = useState(.45);
+  const [recipient, setRecipient] = useState<string>(christmasConfig.recipient);
+  const [editing, setEditing] = useState(false);
+  const [error, setError] = useState('');
   const [autoplayPending, setAutoplayPending] = useState(true);
   const autoplayWanted = useRef(true);
   const volumeRef = useRef(.45);
-  const [tick, setTick] = useState(0); const box = useRef<MusicBox | null>(null);
+  const [tick, setTick] = useState(0);
+  const box = useRef<MusicBox | null>(null);
   const [visitors, setVisitors] = useState<{ total: number; today: number; active: number }>({
     total: 1,
     today: 1,
     active: 1,
   });
+
+  const cycleTopper = useCallback(() => {
+    setTopper(curr => (curr === 'red-apple' ? 'white-apple' : curr === 'white-apple' ? 'star' : 'red-apple'));
+  }, []);
 
   useEffect(() => {
     let sessionId = typeof window !== 'undefined' ? (sessionStorage.getItem('xmas_session_id') || '') : '';
@@ -164,6 +179,14 @@ export default function Home() {
             </button>
           )}
           <button
+            className={`topper-pill-btn topper-${topper}`}
+            onClick={cycleTopper}
+            title="꼭대기 장식 변경 (빨간 사과 / 하얀 사과 / 황금 별)"
+            aria-label={`트리 꼭대기 장식: ${topper === 'red-apple' ? '빨간 사과' : topper === 'white-apple' ? '하얀 사과' : '황금 별'}`}
+          >
+            {topper === 'red-apple' ? '🍎 빨간사과' : topper === 'white-apple' ? '🍏 하얀사과' : '★ 황금별'}
+          </button>
+          <button
             className="apple-morph-btn"
             onClick={() => { setReplay(v => v + 1); setTick(0); if (!motion) setMotion(true); }}
             title="애플 로고에서 점들이 흩어져 트리가 되는 모핑 다시보기"
@@ -176,7 +199,7 @@ export default function Home() {
       </div>
       <div className="style-picker" role="group" aria-label="트리 버전 선택">{treeStyles.map(style => <button key={style.id} aria-pressed={variant === style.id} title={style.description} onClick={() => { setVariant(style.id); setReplay(v => v + 1); setTick(0); }}><span>{style.icon}</span>{style.name}</button>)}</div>
       <div className="scene" onClick={() => { if (!playing) void startMusic(song); setBurst(b => b ? b : 1); }}>
-        <Tree variant={variant} key={replay} theme={theme} snow={snow} motion={motion} burst={burst} recipient={recipient} appleTrigger={replay} />
+        <Tree variant={variant} key={replay} theme={theme} snow={snow} motion={motion} burst={burst} recipient={recipient} appleTrigger={replay} topper={topper} />
         {!playing && autoplayPending && (
           <div className="scene-hint" role="button" aria-label="음악 재생 시작">
             ♪ 화면을 클릭하면 크리스마스 캐럴이 시작돼요
@@ -190,7 +213,50 @@ export default function Home() {
         <span><b>❯</b> npm run christmas -- --style={variant}</span>
         <span>✓ <strong>{visitors.total.toLocaleString()}</strong>명이 함께한 크리스마스 · ♥ {visitors.active}명 온라인</span>
       </div>
-      <div className="toolbar"><div className="themes" aria-label="트리 색상">{palettes.map((p,i) => <button key={p.name} className={theme === i ? 'selected' : ''} onClick={() => setTheme(i)} aria-pressed={theme === i}><span style={{background:p.color}} />{p.name}</button>)}</div><div className="effects"><button className="apple-btn" onClick={() => { setReplay(v => v + 1); setTick(0); if (!motion) setMotion(true); }} title="애플 로고에서 트리로 흩어지는 모핑 다시보기" aria-label="애플 모핑 다시보기"> <span>애플</span></button><button aria-pressed={snow} onClick={() => setSnow(!snow)}>❄ <span>눈</span></button><button aria-pressed={burst > 0} onClick={() => setBurst(burst ? 0 : 1)}>✧ <span>선물</span></button><button onClick={() => setMotion(!motion)} aria-label={motion ? '애니메이션 멈추기' : '애니메이션 재개'}>{motion ? 'Ⅱ' : '▷'}</button><button onClick={() => { setReplay(v => v + 1); setTick(0); }} aria-label="트리 다시 만들기">↻</button></div></div>
+      <div className="toolbar">
+        <div className="themes" aria-label="트리 색상">
+          {palettes.map((p,i) => (
+            <button key={p.name} className={theme === i ? 'selected' : ''} onClick={() => setTheme(i)} aria-pressed={theme === i}>
+              <span style={{background:p.color}} />{p.name}
+            </button>
+          ))}
+        </div>
+        <div className="effects">
+          <div className="topper-toggle-group" role="group" aria-label="트리 꼭대기 장식">
+            <button
+              className={`topper-btn red ${topper === 'red-apple' ? 'selected' : ''}`}
+              onClick={() => setTopper('red-apple')}
+              title="상단 꼭대기: 빨간 사과 (한입 베어문 애플)"
+              aria-pressed={topper === 'red-apple'}
+            >
+              🍎 <span>빨간사과</span>
+            </button>
+            <button
+              className={`topper-btn white ${topper === 'white-apple' ? 'selected' : ''}`}
+              onClick={() => setTopper('white-apple')}
+              title="상단 꼭대기: 하얀 사과 (한입 베어문 애플)"
+              aria-pressed={topper === 'white-apple'}
+            >
+              🍏 <span>하얀사과</span>
+            </button>
+            <button
+              className={`topper-btn star ${topper === 'star' ? 'selected' : ''}`}
+              onClick={() => setTopper('star')}
+              title="상단 꼭대기: 클래식 황금 별"
+              aria-pressed={topper === 'star'}
+            >
+              ★ <span>황금별</span>
+            </button>
+          </div>
+          <button className="apple-btn" onClick={() => { setReplay(v => v + 1); setTick(0); if (!motion) setMotion(true); }} title="애플 로고에서 트리로 흩어지는 모핑 다시보기" aria-label="애플 모핑 다시보기">
+             <span>모핑</span>
+          </button>
+          <button aria-pressed={snow} onClick={() => setSnow(!snow)}>❄ <span>눈</span></button>
+          <button aria-pressed={burst > 0} onClick={() => setBurst(burst ? 0 : 1)}>✧ <span>선물</span></button>
+          <button onClick={() => setMotion(!motion)} aria-label={motion ? '애니메이션 멈추기' : '애니메이션 재개'}>{motion ? 'Ⅱ' : '▷'}</button>
+          <button onClick={() => { setReplay(v => v + 1); setTick(0); }} aria-label="트리 다시 만들기">↻</button>
+        </div>
+      </div>
     </section>
     <section className="bottom-row"><div className="music-player" data-music-controls><button className={`play ${!playing && autoplayPending ? 'pulse' : ''}`} aria-label={playing ? '캐럴 일시 정지' : '캐럴 재생'} onClick={toggleMusic}>{playing ? 'Ⅱ' : '▶'}</button><div className="song-info"><span className="eyebrow">A CHRISTMAS MUSIC BOX</span><select aria-label="캐럴 선택" value={song} onChange={e => { const n = Number(e.target.value); setSong(n); if (playing && box.current && !box.current.isClosed) { box.current.changeSong(n); } else { void startMusic(n); } }}>{songs.map((s,i) => <option value={i} key={s.title}>{s.title}</option>)}</select><small>{playing ? '직접 합성한 오르골 연주' : autoplayPending ? '화면 어디든 터치하거나 재생(▶)을 누르면 바로 시작돼요' : '재생을 눌러 크리스마스를 들어보세요'}</small></div><div className={'equalizer ' + (playing ? 'on' : '')} aria-hidden="true">{[0,1,2,3,4].map(i => <i key={i} style={{animationDelay:`${i * .16}s`}} />)}</div><label className="volume">♪<input aria-label="음악 음량" type="range" min="0" max="1" step=".01" value={volume} onChange={e => { const v = Number(e.target.value); setVolume(v); volumeRef.current = v; box.current?.volume(v); }} /></label></div><button className="edit-wish" onClick={() => setEditing(!editing)}>✎ <span>나만의 인사말</span> <span>↗</span></button></section>
     {editing && <form className="wish-editor" onSubmit={e => { e.preventDefault(); setEditing(false); }}><label htmlFor="recipient">{christmasConfig.greeting} 뒤에 올 문구</label><div><input id="recipient" maxLength={30} value={recipient} onChange={e => setRecipient(e.target.value)} placeholder="LTC" /><button type="submit">완료</button></div></form>}
