@@ -149,14 +149,19 @@ export default function Tree({
       ctx.fillStyle = halo;
       ctx.fillRect(0, 0, w, h);
 
-      // 모핑 타임라인 파라미터
+      const isAppleStyle = variant === 'apple';
+      const build = isAppleStyle
+        ? (motion ? Math.min(1, Math.max(0, (t - 1.2) / 2.6)) : 1)
+        : (motion ? Math.min(1, t / christmasConfig.treeBuildSeconds) : 1);
+
+      // 모핑 타임라인 파라미터 (애플 스타일용)
       const appleHold = 1.35; // 0 ~ 1.35초: 애플 로고 형태 유지 & 펄싱
       const scatterDuration = 2.4; // 1.35 ~ 3.75초: 은하수 소용돌이 흩어짐 및 트리 안착
       const appleCenterY = top + 265 * scale;
       const appleRadius = 145 * scale;
 
-      // 애플 인트로 인포 및 광채 연출 (t < 2.5초)
-      if (t < 2.6) {
+      // 애플 인트로 인포 및 광채 연출 (애플 스타일에서만 표시)
+      if (isAppleStyle && t < 2.6) {
         const appleIntroAlpha = Math.max(0, Math.min(1, (2.4 - t) / 0.8));
         if (appleIntroAlpha > 0.01) {
           ctx.save();
@@ -172,7 +177,7 @@ export default function Tree({
           ctx.fillStyle = `rgba(255, 225, 160, ${0.85 * appleIntroAlpha})`;
           ctx.shadowColor = '#ffd166';
           ctx.shadowBlur = 10 * scale;
-          ctx.fillText(' APPLE HOLIDAY MORPH', cx, appleCenterY - 158 * scale);
+          ctx.fillText(' APPLE HOLIDAY EDITION', cx, appleCenterY - 158 * scale);
           ctx.font = `${8.5 * scale}px monospace`;
           ctx.fillStyle = `rgba(180, 218, 202, ${0.72 * appleIntroAlpha})`;
           ctx.shadowBlur = 0;
@@ -240,14 +245,15 @@ export default function Tree({
 
       for (let row = 0; row < rows; row++) {
         const v = row / (rows - 1);
-        const radius = variant === 'classic'
+        if (!isAppleStyle && v < 1 - build) continue;
+        const radius = (variant === 'classic' || variant === 'apple')
           ? (12 + v * 176) * (1 - 0.11 * Math.sin(v * Math.PI * 8))
           : variant === 'pixel' ? 16 + Math.floor(v * 7) * 24 : 9 + v * 179;
         const count = Math.floor(12 + v * (variant === 'pixel' ? 62 : 100));
 
         for (let j = 0; j < count; j++) {
           const localAngle = (j / count) * Math.PI * 2;
-          const a = localAngle + rotation + (variant === 'classic' ? row * 0.19 : 0);
+          const a = localAngle + rotation + ((variant === 'classic' || variant === 'apple') ? row * 0.19 : 0);
           const z = Math.cos(a);
           let char = '@#%&ox*+^vMW=:'[(row * 7 + j * 3) % 14];
           let color = p.color;
@@ -263,7 +269,7 @@ export default function Tree({
             light = true;
           }
 
-          if (variant === 'classic') {
+          if (variant === 'classic' || variant === 'apple') {
             const garland = Math.sin(localAngle + row * 0.19 - v * 28) > 0.965;
             light = light || ornament || garland;
             if (!isSigSlot) {
@@ -329,7 +335,9 @@ export default function Tree({
       // 오너먼트
       for (let ring = 0; ring < 9; ring++) {
         const v = 0.14 + ring * 0.095;
-        const radius = variant === 'classic' ? (12 + v * 176) * (1 - 0.11 * Math.sin(v * Math.PI * 8))
+        if (!isAppleStyle && v < 1 - build) continue;
+        const radius = (variant === 'classic' || variant === 'apple')
+          ? (12 + v * 176) * (1 - 0.11 * Math.sin(v * Math.PI * 8))
           : variant === 'pixel' ? (16 + Math.floor(v * 7) * 24) * 0.92 : 9 + v * 179;
         for (let j = 0; j < 7; j++) {
           const angle = (j / 7) * Math.PI * 2 + ring * 1.37 + rotation;
@@ -380,13 +388,6 @@ export default function Tree({
 
       for (let i = 0; i < rawPoints.length; i++) {
         const pt = rawPoints[i];
-        const ap = applePoints[i % appleCount];
-
-        // 점별 유기적 지연 시간 (애플 외곽 및 난수에 따른 시차 부여)
-        const distFromCenter = Math.sqrt(ap.x * ap.x + ap.y * ap.y);
-        const delay = distFromCenter * 0.32 + (((i * 7) % 23) / 23) * 0.38;
-        const tau = motion ? Math.max(0, Math.min(1, (t - appleHold - delay) / (scatterDuration - 0.7))) : 1;
-
         let curX = pt.tx;
         let curY = pt.ty;
         let curZ = pt.tz;
@@ -397,63 +398,71 @@ export default function Tree({
         let isRed = redSigChars.has(pt.char);
         let isGold = goldSigChars.has(pt.char);
 
-        if (tau < 1) {
-          // Easing: Smooth cubic in-out
-          const ease = tau < 0.5 ? 4 * tau * tau * tau : 1 - Math.pow(-2 * tau + 2, 3) / 2;
-          const arc = Math.sin(Math.PI * tau); // 0 -> 1 -> 0 (최대 흩어짐 아치)
+        // 애플 테마일 때만 애플 로고에서 흩어지는 물리 모핑 적용
+        if (isAppleStyle) {
+          const ap = applePoints[i % appleCount];
+          const distFromCenter = Math.sqrt(ap.x * ap.x + ap.y * ap.y);
+          const delay = distFromCenter * 0.32 + (((i * 7) % 23) / 23) * 0.38;
+          const tau = motion ? Math.max(0, Math.min(1, (t - appleHold - delay) / (scatterDuration - 0.7))) : 1;
 
-          // 은하수 폭죽 흩어짐(Scatter) 오프셋
-          const angle = i * 2.399963;
-          const scatterDist = (70 + (i % 13) * 18 + ((i * 5) % 17) * 8) * scale;
-          const swirl = (1 - tau) * 3.8;
-          const sox = Math.cos(angle + swirl) * scatterDist * arc;
-          const soy = Math.sin(angle + swirl) * scatterDist * 0.65 * arc - 42 * arc * scale;
-          const soz = Math.sin(angle * 2) * 0.7 * arc;
+          if (tau < 1) {
+            // Easing: Smooth cubic in-out
+            const ease = tau < 0.5 ? 4 * tau * tau * tau : 1 - Math.pow(-2 * tau + 2, 3) / 2;
+            const arc = Math.sin(Math.PI * tau); // 0 -> 1 -> 0 (최대 흩어짐 아치)
 
-          // 초기 애플 로고 위치 (미세한 호흡 박동)
-          const pulse = 1 + 0.02 * Math.sin(t * 4.5 + ap.x * 2.5);
-          const ax = cx + ap.x * appleRadius * pulse;
-          const ay = appleCenterY + ap.y * appleRadius * pulse;
-          const az = ap.z;
+            // 은하수 폭죽 흩어짐(Scatter) 오프셋
+            const angle = i * 2.399963;
+            const scatterDist = (70 + (i % 13) * 18 + ((i * 5) % 17) * 8) * scale;
+            const swirl = (1 - tau) * 3.8;
+            const sox = Math.cos(angle + swirl) * scatterDist * arc;
+            const soy = Math.sin(angle + swirl) * scatterDist * 0.65 * arc - 42 * arc * scale;
+            const soz = Math.sin(angle * 2) * 0.7 * arc;
 
-          curX = ax * (1 - ease) + pt.tx * ease + sox;
-          curY = ay * (1 - ease) + pt.ty * ease + soy;
-          curZ = az * (1 - ease) + pt.tz * ease + soz;
+            // 초기 애플 로고 위치 (미세한 호흡 박동)
+            const pulse = 1 + 0.02 * Math.sin(t * 4.5 + ap.x * 2.5);
+            const ax = cx + ap.x * appleRadius * pulse;
+            const ay = appleCenterY + ap.y * appleRadius * pulse;
+            const az = ap.z;
 
-          // 애플 단계 및 흩어짐 단계에서의 색상 & 문자 보간
-          if (tau < 0.32) {
-            if (ap.isLeaf) {
-              curChar = i % 4 === 0 ? '' : '*';
-              curColor = '#ffd166';
-              curLight = true;
-              isGold = true;
-              isRed = false;
-            } else {
-              curChar = appleChars[(i * 3 + Math.floor(t * 4)) % appleChars.length];
-              const isAppleSig = (i % 7 === 0) || (i % 11 === 1);
-              if (isAppleSig) {
+            curX = ax * (1 - ease) + pt.tx * ease + sox;
+            curY = ay * (1 - ease) + pt.ty * ease + soy;
+            curZ = az * (1 - ease) + pt.tz * ease + soz;
+
+            // 애플 단계 및 흩어짐 단계에서의 색상 & 문자 보간
+            if (tau < 0.32) {
+              if (ap.isLeaf) {
+                curChar = i % 4 === 0 ? '' : '*';
+                curColor = '#ffd166';
                 curLight = true;
-                if (i % 2 === 0) {
-                  curColor = '#ff2e56';
-                  curChar = specialList[i % 4]; // d, y, D, Y
-                  isRed = true;
-                  isGold = false;
-                } else {
-                  curColor = '#ffd166';
-                  curChar = specialList[4 + (i % 4)]; // s, w, S, W
-                  isGold = true;
-                  isRed = false;
-                }
+                isGold = true;
+                isRed = false;
               } else {
-                curColor = i % 5 === 0 ? '#ffffff' : '#f4e4c2';
-                curLight = i % 6 === 0;
+                curChar = appleChars[(i * 3 + Math.floor(t * 4)) % appleChars.length];
+                const isAppleSig = (i % 7 === 0) || (i % 11 === 1);
+                if (isAppleSig) {
+                  curLight = true;
+                  if (i % 2 === 0) {
+                    curColor = '#ff2e56';
+                    curChar = specialList[i % 4]; // d, y, D, Y
+                    isRed = true;
+                    isGold = false;
+                  } else {
+                    curColor = '#ffd166';
+                    curChar = specialList[4 + (i % 4)]; // s, w, S, W
+                    isGold = true;
+                    isRed = false;
+                  }
+                } else {
+                  curColor = i % 5 === 0 ? '#ffffff' : '#f4e4c2';
+                  curLight = i % 6 === 0;
+                }
               }
-            }
-          } else if (tau < 0.75) {
-            // 흩어지는 도중 화려한 크리스마스 별빛 쉬머
-            curLight = true;
-            if (i % 4 === 0) {
-              curColor = festiveColors[i % festiveColors.length];
+            } else if (tau < 0.75) {
+              // 흩어지는 도중 화려한 크리스마스 별빛 쉬머
+              curLight = true;
+              if (i % 4 === 0) {
+                curColor = festiveColors[i % festiveColors.length];
+              }
             }
           }
         }
@@ -508,15 +517,16 @@ export default function Tree({
         }
       }
 
-      // 트리 꼭대기 장식 (Topper: star, red-apple, white-apple)
-      const topperAlpha = motion ? Math.min(1, Math.max(0, (t - 3.5) / 1.2)) : 1;
+      // 트리 꼭대기 장식: 애플 테마일 때만  사과 토퍼(빨간 사과/하얀 사과), 다른 테마는 항상 클래식 황금 별!
+      const activeTopper: TreeTopper = isAppleStyle ? (topper === 'white-apple' ? 'white-apple' : 'red-apple') : 'star';
+      const topperAlpha = motion ? Math.min(1, Math.max(0, (t - (isAppleStyle ? 3.5 : 2.5)) / 1.2)) : 1;
       if (topperAlpha > 0.01) {
         ctx.save();
         ctx.globalAlpha = topperAlpha;
         ctx.textAlign = 'center';
 
-        if (topper === 'red-apple' || topper === 'white-apple') {
-          const isRed = topper === 'red-apple';
+        if (activeTopper === 'red-apple' || activeTopper === 'white-apple') {
+          const isRed = activeTopper === 'red-apple';
           const shimmer = Math.sin(t * 4.2) ** 2;
 
           // 사과 중심 래디얼 오라 (Apple Topper Aura)

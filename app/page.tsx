@@ -32,7 +32,7 @@ export default function Home() {
   });
 
   const cycleTopper = useCallback(() => {
-    setTopper(curr => (curr === 'red-apple' ? 'white-apple' : curr === 'white-apple' ? 'star' : 'red-apple'));
+    setTopper(curr => (curr === 'red-apple' ? 'white-apple' : 'red-apple'));
   }, []);
 
   useEffect(() => {
@@ -178,22 +178,26 @@ export default function Home() {
               ♫ {songs[song].title}
             </button>
           )}
-          <button
-            className={`topper-pill-btn topper-${topper}`}
-            onClick={cycleTopper}
-            title="꼭대기 장식 변경 (빨간 사과 / 하얀 사과 / 황금 별)"
-            aria-label={`트리 꼭대기 장식: ${topper === 'red-apple' ? '빨간 사과' : topper === 'white-apple' ? '하얀 사과' : '황금 별'}`}
-          >
-            {topper === 'red-apple' ? '🍎 빨간사과' : topper === 'white-apple' ? '🍏 하얀사과' : '★ 황금별'}
-          </button>
-          <button
-            className="apple-morph-btn"
-            onClick={() => { setReplay(v => v + 1); setTick(0); if (!motion) setMotion(true); }}
-            title="애플 로고에서 점들이 흩어져 트리가 되는 모핑 다시보기"
-            aria-label="애플 모핑 다시보기"
-          >
-             모핑
-          </button>
+          {variant === 'apple' && (
+            <>
+              <button
+                className={`topper-pill-btn topper-${topper}`}
+                onClick={cycleTopper}
+                title="애플 꼭대기 장식 토글 (빨간 사과 / 하얀 사과)"
+                aria-label={`애플 꼭대기 장식: ${topper === 'red-apple' ? '빨간 사과' : '하얀 사과'}`}
+              >
+                {topper === 'red-apple' ? '🍎 빨간사과' : '🍏 하얀사과'}
+              </button>
+              <button
+                className="apple-morph-btn"
+                onClick={() => { setReplay(v => v + 1); setTick(0); if (!motion) setMotion(true); }}
+                title="애플 로고에서 점들이 흩어져 트리가 되는 모핑 다시보기"
+                aria-label="애플 모핑 다시보기"
+              >
+                 모핑
+              </button>
+            </>
+          )}
           <button onClick={fullscreen} title="전체 화면" aria-label="전체 화면 전환">⛶</button>
         </div>
       </div>
@@ -222,35 +226,31 @@ export default function Home() {
           ))}
         </div>
         <div className="effects">
-          <div className="topper-toggle-group" role="group" aria-label="트리 꼭대기 장식">
-            <button
-              className={`topper-btn red ${topper === 'red-apple' ? 'selected' : ''}`}
-              onClick={() => setTopper('red-apple')}
-              title="상단 꼭대기: 빨간 사과 (한입 베어문 애플)"
-              aria-pressed={topper === 'red-apple'}
-            >
-              🍎 <span>빨간사과</span>
-            </button>
-            <button
-              className={`topper-btn white ${topper === 'white-apple' ? 'selected' : ''}`}
-              onClick={() => setTopper('white-apple')}
-              title="상단 꼭대기: 하얀 사과 (한입 베어문 애플)"
-              aria-pressed={topper === 'white-apple'}
-            >
-              🍏 <span>하얀사과</span>
-            </button>
-            <button
-              className={`topper-btn star ${topper === 'star' ? 'selected' : ''}`}
-              onClick={() => setTopper('star')}
-              title="상단 꼭대기: 클래식 황금 별"
-              aria-pressed={topper === 'star'}
-            >
-              ★ <span>황금별</span>
-            </button>
-          </div>
-          <button className="apple-btn" onClick={() => { setReplay(v => v + 1); setTick(0); if (!motion) setMotion(true); }} title="애플 로고에서 트리로 흩어지는 모핑 다시보기" aria-label="애플 모핑 다시보기">
-             <span>모핑</span>
-          </button>
+          {variant === 'apple' && (
+            <>
+              <div className="topper-toggle-group" role="group" aria-label="애플 꼭대기 장식">
+                <button
+                  className={`topper-btn red ${topper === 'red-apple' ? 'selected' : ''}`}
+                  onClick={() => setTopper('red-apple')}
+                  title="상단 꼭대기: 빨간 사과 (한입 베어문 애플)"
+                  aria-pressed={topper === 'red-apple'}
+                >
+                  🍎 <span>빨간사과</span>
+                </button>
+                <button
+                  className={`topper-btn white ${topper === 'white-apple' ? 'selected' : ''}`}
+                  onClick={() => setTopper('white-apple')}
+                  title="상단 꼭대기: 하얀 사과 (한입 베어문 애플)"
+                  aria-pressed={topper === 'white-apple'}
+                >
+                  🍏 <span>하얀사과</span>
+                </button>
+              </div>
+              <button className="apple-btn" onClick={() => { setReplay(v => v + 1); setTick(0); if (!motion) setMotion(true); }} title="애플 로고에서 트리로 흩어지는 모핑 다시보기" aria-label="애플 모핑 다시보기">
+                 <span>모핑</span>
+              </button>
+            </>
+          )}
           <button aria-pressed={snow} onClick={() => setSnow(!snow)}>❄ <span>눈</span></button>
           <button aria-pressed={burst > 0} onClick={() => setBurst(burst ? 0 : 1)}>✧ <span>선물</span></button>
           <button onClick={() => setMotion(!motion)} aria-label={motion ? '애니메이션 멈추기' : '애니메이션 재개'}>{motion ? 'Ⅱ' : '▷'}</button>

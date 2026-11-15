@@ -1,5 +1,6 @@
 export const treeStyles = [
   { id: 'classic', name: '클래식', icon: '*', label: 'classic.ts', description: '문자와 전구로 가득한 크리스마스 트리' },
+  { id: 'apple', name: '애플', icon: '', label: 'apple.ts', description: '한입 베어문 애플 로고에서 점들이 흩어져 피어나는 스페셜 트리' },
   { id: 'ribbon', name: '리본', icon: '~', label: 'helix.ts', description: '빛나는 두 줄의 나선형 리본 트리' },
   { id: 'pixel', name: '8-bit', icon: '#', label: 'pixel.ts', description: '레트로 게임 속 계단 모양 픽셀 트리' },
   { id: 'stars', name: '별자리', icon: '+', label: 'stars.ts', description: '별과 궤도로 연결된 우주 속 트리' },
