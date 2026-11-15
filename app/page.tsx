@@ -14,6 +14,37 @@ export default function Home() {
   const autoplayWanted = useRef(true);
   const volumeRef = useRef(.45);
   const [tick, setTick] = useState(0); const box = useRef<MusicBox | null>(null);
+  const [visitors, setVisitors] = useState<{ total: number; today: number; active: number }>({
+    total: 1042,
+    today: 87,
+    active: 1,
+  });
+
+  useEffect(() => {
+    let sessionId = typeof window !== 'undefined' ? (sessionStorage.getItem('xmas_session_id') || '') : '';
+    const ping = async (isFirst = false) => {
+      try {
+        const res = await fetch('/api/visitors', {
+          method: isFirst ? 'POST' : 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          body: isFirst ? JSON.stringify({ sessionId }) : undefined,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setVisitors({ total: data.total, today: data.today, active: data.active });
+          if (data.sessionId && typeof window !== 'undefined') {
+            sessionStorage.setItem('xmas_session_id', data.sessionId);
+            sessionId = data.sessionId;
+          }
+        }
+      } catch {
+        // ignore
+      }
+    };
+    void ping(true);
+    const timer = setInterval(() => void ping(false), 20000);
+    return () => clearInterval(timer);
+  }, []);
   useEffect(() => { const media = matchMedia('(prefers-reduced-motion: reduce)'); const update = () => setMotion(!media.matches); update(); media.addEventListener('change', update); return () => media.removeEventListener('change', update); }, []);
   useEffect(() => { if (!motion) return; const timer = setInterval(() => setTick(t => t + 1), 350); return () => clearInterval(timer); }, [motion]);
   const startMusic = useCallback(async (index: number) => {
@@ -90,12 +121,36 @@ export default function Home() {
   }
   async function fullscreen() { try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); } catch { setError('이 브라우저는 전체 화면을 지원하지 않습니다.'); } }
   return <main className={motion ? '' : 'paused'}>
-    <header><a className="brand" href="/" aria-label="ASCII Christmas 홈"><span className="brand-star">✳</span><span>little christma<span className="sig-accent">s</span><span className="brand-sub">A <span className="sig-accent">W</span>ONDERLAND IN CHARACTERS</span></span></a><div className="edition"><i /> CHRISTMAS EDITION <span> / 2026</span></div></header>
-    <section className="intro"><div className="eyebrow">A LITTLE CODE. A LITTLE MAGIC.</div><h1>Ever<span className="sig-accent">y</span> character, <em>a little <span className="sig-accent">w</span>ish.</em></h1><p>작은 문자들이 모여, 당신만의 크리스마스가 됩니다.</p></section>
+    <header>
+      <a className="brand" href="/" aria-label="ASCII Christmas 홈">
+        <span className="brand-star">✳</span>
+        <span>
+          little christma<span className="sig-accent">s</span>
+          <span className="brand-sub">A <span className="sig-accent">W</span>ONDERLAND IN CHARACTERS</span>
+        </span>
+      </a>
+      <div className="header-meta">
+        <div className="visitor-badge" title="현재 접속자 및 누적 방문자">
+          <span className="live-dot" />
+          <span>LIVE <b>{visitors.active}</b>명 접속 중</span>
+          <span className="badge-sep">/</span>
+          <span>누적 <b>{visitors.total.toLocaleString()}</b>명</span>
+        </div>
+        <div className="edition"><i /> CHRISTMAS EDITION <span> / 2026</span></div>
+      </div>
+    </header>
+    <section className="intro">
+      <div className="eyebrow">✧ A LITTLE CODE. A LITTLE MAGIC. ✧</div>
+      <h1>Ever<span className="sig-accent">y</span> character, <em>a little <span className="sig-accent">w</span>ish.</em></h1>
+      <p>작은 문자들이 모여, 당신만의 크리스마스가 됩니다.</p>
+    </section>
     <section className="wonderland" aria-label="인터랙티브 크리스마스 트리">
       <div className="stage-top">
         <div className="stage-top-left">
-          <span><i /> LIVE ASCII WONDERLAND</span>
+          <span>
+            <i /> LIVE ASCII WONDERLAND
+            <span className="stage-visitors">· 🎄 <b>{visitors.active}</b>명 감상 중</span>
+          </span>
           {!playing && (
             <button className="quick-sound-btn" onClick={() => void startMusic(song)} aria-label="크리스마스 캐럴 켜기">
               ♪ 캐럴 켜기
@@ -123,7 +178,10 @@ export default function Home() {
         <div className="scene-note">MADE OF LETTERS & LOVE</div>
       </div>
       <CodeStream motion={motion} styleLabel={currentStyle.label} styleName={currentStyle.name} />
-      <div className="dev-status" aria-hidden="true"><span><b>❯</b> npm run christmas -- --style={variant}</span><span>✓ compiled · ♥ 0 bugs, 100 wishes</span></div>
+      <div className="dev-status" aria-hidden="true">
+        <span><b>❯</b> npm run christmas -- --style={variant}</span>
+        <span>✓ <strong>{visitors.total.toLocaleString()}</strong>명이 함께한 크리스마스 · ♥ {visitors.active}명 온라인</span>
+      </div>
       <div className="toolbar"><div className="themes" aria-label="트리 색상">{palettes.map((p,i) => <button key={p.name} className={theme === i ? 'selected' : ''} onClick={() => setTheme(i)} aria-pressed={theme === i}><span style={{background:p.color}} />{p.name}</button>)}</div><div className="effects"><button aria-pressed={snow} onClick={() => setSnow(!snow)}>❄ <span>눈</span></button><button aria-pressed={burst > 0} onClick={() => setBurst(burst ? 0 : 1)}>✧ <span>선물</span></button><button onClick={() => setMotion(!motion)} aria-label={motion ? '애니메이션 멈추기' : '애니메이션 재개'}>{motion ? 'Ⅱ' : '▷'}</button><button onClick={() => { setReplay(v => v + 1); setTick(0); }} aria-label="트리 다시 만들기">↻</button></div></div>
     </section>
     <section className="bottom-row"><div className="music-player" data-music-controls><button className={`play ${!playing && autoplayPending ? 'pulse' : ''}`} aria-label={playing ? '캐럴 일시 정지' : '캐럴 재생'} onClick={toggleMusic}>{playing ? 'Ⅱ' : '▶'}</button><div className="song-info"><span className="eyebrow">A CHRISTMAS MUSIC BOX</span><select aria-label="캐럴 선택" value={song} onChange={e => { const n = Number(e.target.value); setSong(n); if (playing && box.current && !box.current.isClosed) { box.current.changeSong(n); } else { void startMusic(n); } }}>{songs.map((s,i) => <option value={i} key={s.title}>{s.title}</option>)}</select><small>{playing ? '직접 합성한 오르골 연주' : autoplayPending ? '화면 어디든 터치하거나 재생(▶)을 누르면 바로 시작돼요' : '재생을 눌러 크리스마스를 들어보세요'}</small></div><div className={'equalizer ' + (playing ? 'on' : '')} aria-hidden="true">{[0,1,2,3,4].map(i => <i key={i} style={{animationDelay:`${i * .16}s`}} />)}</div><label className="volume">♪<input aria-label="음악 음량" type="range" min="0" max="1" step=".01" value={volume} onChange={e => { const v = Number(e.target.value); setVolume(v); volumeRef.current = v; box.current?.volume(v); }} /></label></div><button className="edit-wish" onClick={() => setEditing(!editing)}>✎ <span>나만의 인사말</span> <span>↗</span></button></section>
