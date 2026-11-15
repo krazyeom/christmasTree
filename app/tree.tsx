@@ -152,31 +152,43 @@ export default function Tree({ theme, snow, motion, burst, recipient, variant }:
         ctx.font = `${9 * scale}px monospace`; ctx.fillStyle = '#99b4ab'; ctx.shadowBlur = 0;
         ctx.fillText('* . +  MAY ALL YOUR WISHES GLOW  + . *',cx,top+641*scale);
       }
-      // A quick shooting-star flight, with an ASCII sleigh, presents and Rudolph.
+      // Project an approaching and receding flight path onto the sky.
       const flight = (t % 11) / 3.4;
       if (motion && flight < 1) {
-        const size = Math.max(.65, Math.min(1, scale * 1.15));
-        const x = -210 * size + flight * (w + 340 * size);
-        const y = h * .10 + flight * h * .16;
-        const bob = Math.sin(t * 15) * 2 * size;
-        ctx.save();
-        ctx.translate(x, y + bob);
-        ctx.textAlign = 'left'; ctx.font = `bold ${10 * size}px monospace`;
-        ctx.shadowBlur = 10 * size;
-        // Sparkling trail fades away behind the sleigh.
-        for (let i = 0; i < 15; i++) {
-          ctx.globalAlpha = (1 - i / 15) * .75;
+        const baseSize = Math.max(.65, Math.min(1, scale * 1.15));
+        const project = (progress: number) => {
+          const closeness = Math.sin(Math.PI * progress);
+          return {
+            x: -210 * baseSize + progress * (w + 360 * baseSize),
+            y: h * (.12 + .18 * progress - .075 * closeness),
+            size: baseSize * (.55 + .75 * closeness),
+          };
+        };
+        const current = project(flight);
+        ctx.save(); ctx.textAlign = 'center';
+        // Sample previous positions along the same path to preserve its curved perspective.
+        for (let i = 1; i <= 24; i++) {
+          const previousFlight = flight - i * .009;
+          if (previousFlight < 0) continue;
+          const trail = project(previousFlight);
+          ctx.font = `bold ${Math.max(3, 8 * trail.size)}px monospace`;
+          ctx.globalAlpha = (1 - i / 25) * .8;
           ctx.fillStyle = i % 3 === 0 ? '#ffb4c4' : '#ffe2a3';
-          ctx.shadowColor = ctx.fillStyle;
-          ctx.fillText(i % 4 === 0 ? '*' : '.', -i * 9 * size, Math.sin(i * 2 + t * 12) * 8 * size);
+          ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 8 * trail.size;
+          ctx.fillText(i % 4 === 0 ? '*' : '.', trail.x - 12 * trail.size, trail.y + Math.sin(i * 1.9 + t * 10) * 6 * trail.size);
         }
-        ctx.globalAlpha = 1; ctx.fillStyle = '#ffcc8b'; ctx.shadowColor = '#f6c97e';
+        ctx.globalAlpha = 1;
+        ctx.translate(current.x, current.y + Math.sin(t * 15) * 2 * current.size);
+        // Banking and foreshortening make the sleigh turn as it passes the viewer.
+        ctx.rotate(-.12 + .24 * flight + Math.sin(t * 5) * .035);
+        ctx.transform(.8 + .2 * Math.sin(Math.PI * flight), 0, -.12 * Math.cos(Math.PI * flight), 1, 0, 0);
+        ctx.textAlign = 'left'; ctx.font = `bold ${10 * current.size}px monospace`;
+        ctx.fillStyle = '#ffcc8b'; ctx.shadowColor = '#f6c97e'; ctx.shadowBlur = 10 * current.size;
         const sleigh = [String.raw`  _/\_  [*][+]       \ /`, String.raw` (o_o)  |__|__|       Y`, String.raw` /|_|\__|_____|___  _/\_`, String.raw`  / \  \_________/--(o o)>`, String.raw`        \_______/    / \ `];
-        sleigh.forEach((line, i) => ctx.fillText(line, 0, i * 10 * size));
-        // Rudolph's red nose and Santa's hat stand out on the monochrome silhouette.
-        ctx.fillStyle = '#ff526b'; ctx.shadowColor = '#ff526b'; ctx.shadowBlur = 12 * size;
-        ctx.fillText('*', 155 * size, 30 * size);
-        ctx.fillText('^', 19 * size, 0);
+        sleigh.forEach((line, i) => ctx.fillText(line, 0, i * 10 * current.size));
+        ctx.fillStyle = '#ff526b'; ctx.shadowColor = '#ff526b'; ctx.shadowBlur = 12 * current.size;
+        ctx.fillText('*', 155 * current.size, 30 * current.size);
+        ctx.fillText('^', 19 * current.size, 0);
         ctx.restore();
       }
       ctx.globalAlpha = 1; frame = requestAnimationFrame(draw);
