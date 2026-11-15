@@ -2,10 +2,11 @@
 export const christmasConfig = {
   greeting: 'Happy Christmas',
   recipient: 'LTC',
-  greetingAppearsAfterSeconds: 4,
-  treeBuildSeconds: 7,
+  greetingAppearsAfterSeconds: 3,
+  treeBuildSeconds: 5,
+  rotationSpeed: 0.33, // 회전 속도 (라디안/초)
   snowCount: 230,
-  snowSpeed: 2.6,
-  giftSpeed: 2.1,
+  snowSpeed: 3.1,
+  giftSpeed: 2.6,
   musicSpeed: 1.4, // 캐럴 재생 속도 (1 = 원래 속도)
 };

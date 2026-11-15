@@ -2,11 +2,11 @@
 
 Next.js / React / TypeScript로 만든 인터랙티브 ASCII 크리스마스 트리입니다.
 
-- 아래에서 위로 7초 동안 완성되는 회전 트리, 문자로 만든 별과 조명
+- 아래에서 위로 5초 동안 완성되는 회전 트리, 문자로 만든 별과 조명
 - 6가지 트리: 클래식 / 나선 리본 / 8-bit / 별자리 / 매트릭스 / 회로
 - 버전별 터미널 코드, 실행 커맨드와 상태를 표현한 개발자 스타일 UI (장식용)
 - 눈, 떨어지는 ASCII 선물, 바닥 반사, 3가지 색상 테마
-- 4초부터 나타나는 `Happy Christmas LTC` 인사말
+- 3초부터 나타나는 `Happy Christmas LTC` 인사말
 - 장식용 JavaScript 코드 스크롤, 모바일 반응형 화면
 - 직접 합성한 Jingle Bells / Silent Night / Deck the Halls / Joy to the World 오르골, 음량 조절
 - 애니메이션 정지·다시 만들기·전체 화면, reduced-motion 지원
@@ -41,11 +41,12 @@ PM2_HOME="$PWD/.runtime/pm2" ./node_modules/.bin/pm2 list
 export const christmasConfig = {
   greeting: 'Happy Christmas',
   recipient: 'LTC', // 원하는 이름이나 문구
-  greetingAppearsAfterSeconds: 4,
-  treeBuildSeconds: 7,
+  greetingAppearsAfterSeconds: 3,
+  treeBuildSeconds: 5,
+  rotationSpeed: 0.33, // 초당 회전 속도
   snowCount: 230, // 눈의 개수
-  snowSpeed: 2.6, // 눈 속도 배율
-  giftSpeed: 2.1, // 선물 속도 배율
+  snowSpeed: 3.1, // 눈 속도 배율
+  giftSpeed: 2.6, // 선물 속도 배율
   musicSpeed: 1.4, // 캐럴 속도 배율
 };
 ```

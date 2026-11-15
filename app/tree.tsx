@@ -22,7 +22,7 @@ export default function Tree({ theme, snow, motion, burst, recipient, variant }:
       if (snow) { ctx.font = `${11 * scale}px monospace`; for (let i = 0; i < christmasConfig.snowCount; i++) { const x = ((i * 137.51 + Math.sin(t * .3 + i) * 25) % w + w) % w; const y = (i * 71.71 + t * christmasConfig.snowSpeed * (10 + i % 16)) % h; ctx.globalAlpha = .15 + (i % 5) * .1; ctx.fillStyle = '#d1eee2'; ctx.fillText(i % 7 === 0 ? '+' : '.', x, y); } }
       ctx.globalAlpha = 1;
       const festiveColors = ['#ff658c', '#ffd66b', '#a98aff', '#65c9ff', '#ff995b', '#6ff0bf'];
-      const rotation = t * .22;
+      const rotation = t * christmasConfig.rotationSpeed;
       const drawGifts = (front: boolean) => {
         if (!burst) return;
         const gifts = Array.from({ length: 6 }, (_, i) => {
@@ -53,7 +53,7 @@ export default function Tree({ theme, snow, motion, burst, recipient, variant }:
         const count = Math.floor(12 + v * (variant === 'pixel' ? 62 : 100));
         for (let j = 0; j < count; j++) {
           const localAngle = j / count * Math.PI * 2;
-          const a = localAngle + t * .22 + (variant === 'classic' ? row * .19 : 0);
+          const a = localAngle + rotation + (variant === 'classic' ? row * .19 : 0);
           const z = Math.cos(a);
           let char = '@#%&ox*+^vMW=:'[(row * 7 + j * 3) % 14];
           let color = p.color;
