@@ -17,24 +17,111 @@ export class MusicBox {
   private index = 0;
   private song = 0;
   private closed = false;
-  constructor(volume: number) { this.ctx = new AudioContext(); this.gain = this.ctx.createGain(); this.gain.gain.value = volume * .32; this.gain.connect(this.ctx.destination); }
-  volume(v: number) { this.gain.gain.setTargetAtTime(v * .32, this.ctx.currentTime, .1); }
+  private isScheduled = false;
+
+  constructor(volume: number) {
+    const AudioContextClass = typeof window !== 'undefined'
+      ? (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)
+      : AudioContext;
+    this.ctx = new AudioContextClass();
+    this.gain = this.ctx.createGain();
+    this.gain.gain.value = volume * 0.32;
+    this.gain.connect(this.ctx.destination);
+  }
+
+  get isClosed(): boolean {
+    return this.closed;
+  }
+
+  volume(v: number) {
+    if (this.closed) return;
+    this.gain.gain.setTargetAtTime(v * 0.32, this.ctx.currentTime, 0.1);
+  }
+
   async play(song: number): Promise<boolean> {
     if (this.closed) return false;
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-    try {
-      await Promise.race([this.ctx.resume(), new Promise<void>(resolve => { timeout = setTimeout(resolve, 700); })]);
-    } finally { clearTimeout(timeout); }
+    this.song = song;
+    this.index = 0;
+    this.isScheduled = false;
+
+    if (this.ctx.state === 'suspended') {
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([
+          this.ctx.resume(),
+          new Promise<void>(resolve => { timeout = setTimeout(resolve, 60); })
+        ]);
+      } catch {
+        // 브라우저 오토플레이 제한 시 suspended 유지
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
     if (this.closed || this.ctx.state !== 'running') return false;
-    clearInterval(this.timer);
-    this.song = song; this.index = 0; this.next = this.ctx.currentTime + .05;
-    this.schedule(); this.timer = setInterval(() => this.schedule(), 100);
+    this.startLoop();
     return true;
   }
 
-  private bell(midi: number, when: number, length: number, strength: number) {
-    [1, 2, 3].forEach((harmonic, i) => { const osc = this.ctx.createOscillator(); const env = this.ctx.createGain(); osc.frequency.value = 440 * 2 ** ((midi - 69) / 12) * harmonic; env.gain.setValueAtTime(0, when); env.gain.linearRampToValueAtTime(strength / (1 + i * 5), when + .008); env.gain.exponentialRampToValueAtTime(.0001, when + length); osc.connect(env); env.connect(this.gain); osc.start(when); osc.stop(when + length + .02); osc.onended = () => { osc.disconnect(); env.disconnect(); }; });
+  async resume(): Promise<boolean> {
+    if (this.closed) return false;
+    if (this.ctx.state === 'suspended') {
+      try {
+        await this.ctx.resume();
+      } catch {
+        return false;
+      }
+    }
+    if (this.ctx.state === 'running') {
+      this.startLoop();
+      return true;
+    }
+    return false;
   }
-  private schedule() { const song = songs[this.song]; while (this.next < this.ctx.currentTime + .3) { const [note, beats] = song.notes[this.index]; const duration = beats * 60 / (song.bpm * christmasConfig.musicSpeed); this.bell(note, this.next, Math.max(.6, duration * 1.7), .6); if (this.index % 4 === 0) this.bell(this.index % 8 === 0 ? 48 : 55, this.next, 1.8, .3); this.next += duration; this.index = (this.index + 1) % song.notes.length; if (!this.index) this.next += .9 / christmasConfig.musicSpeed; } }
-  close() { this.closed = true; clearInterval(this.timer); if (this.ctx.state !== 'closed') void this.ctx.close().catch(() => {}); }
+
+  private startLoop() {
+    if (this.isScheduled) return;
+    clearInterval(this.timer);
+    this.isScheduled = true;
+    this.next = this.ctx.currentTime + 0.05;
+    this.schedule();
+    this.timer = setInterval(() => this.schedule(), 100);
+  }
+
+  private bell(midi: number, when: number, length: number, strength: number) {
+    [1, 2, 3].forEach((harmonic, i) => {
+      const osc = this.ctx.createOscillator();
+      const env = this.ctx.createGain();
+      osc.frequency.value = 440 * 2 ** ((midi - 69) / 12) * harmonic;
+      env.gain.setValueAtTime(0, when);
+      env.gain.linearRampToValueAtTime(strength / (1 + i * 5), when + 0.008);
+      env.gain.exponentialRampToValueAtTime(0.0001, when + length);
+      osc.connect(env);
+      env.connect(this.gain);
+      osc.start(when);
+      osc.stop(when + length + 0.02);
+      osc.onended = () => { osc.disconnect(); env.disconnect(); };
+    });
+  }
+
+  private schedule() {
+    const song = songs[this.song];
+    while (this.next < this.ctx.currentTime + 0.3) {
+      const [note, beats] = song.notes[this.index];
+      const duration = beats * 60 / (song.bpm * christmasConfig.musicSpeed);
+      this.bell(note, this.next, Math.max(0.6, duration * 1.7), 0.6);
+      if (this.index % 4 === 0) this.bell(this.index % 8 === 0 ? 48 : 55, this.next, 1.8, 0.3);
+      this.next += duration;
+      this.index = (this.index + 1) % song.notes.length;
+      if (!this.index) this.next += 0.9 / christmasConfig.musicSpeed;
+    }
+  }
+
+  close() {
+    this.closed = true;
+    clearInterval(this.timer);
+    if (this.ctx.state !== 'closed') {
+      void this.ctx.close().catch(() => {});
+    }
+  }
 }
