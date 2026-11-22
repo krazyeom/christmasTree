@@ -38,7 +38,7 @@ export default function HandCameraPip({ trackingState, onClose }: HandCameraPipP
       video.style.transform = 'scaleX(-1)'; // 미러링 반전
       container.prepend(video);
     }
-  }, [trackingState.active]);
+  }, [trackingState.active, trackingState.starting, minimized]);
 
   // 랜드마크 스켈레톤 드로잉
   useEffect(() => {
@@ -105,6 +105,8 @@ export default function HandCameraPip({ trackingState, onClose }: HandCameraPipP
         trackingState.isPinching ? 'pinching' : ''
       }`}
       onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onPointerMove={(e) => e.stopPropagation()}
       aria-label="손가락 인식 미리보기 패널"
     >
       <div className="pip-header">

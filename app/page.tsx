@@ -51,7 +51,15 @@ export default function Home() {
 
   useEffect(() => {
     const unsub = handTracker.subscribe(setHandState);
+    const stopWhenHidden = () => {
+      if (document.hidden) handTracker.stop();
+    };
+    document.addEventListener('visibilitychange', stopWhenHidden);
+    const stopOnExit = () => handTracker.stop();
+    window.addEventListener('pagehide', stopOnExit);
     return () => {
+      document.removeEventListener('visibilitychange', stopWhenHidden);
+      window.removeEventListener('pagehide', stopOnExit);
       unsub();
       handTracker.stop();
     };
@@ -71,25 +79,47 @@ export default function Home() {
     }
   }, [handState.active]);
 
-  const handleScenePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+  const scenePointers = useRef(new Map<number, { x: number; y: number }>());
+
+  const updateScenePointer = useCallback((e: React.PointerEvent<HTMLDivElement>, down: boolean) => {
     const rect = e.currentTarget.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
-    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
-    setPointerPos(p => ({ ...p, x, y, active: true }));
+    const point = {
+      x: Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)),
+      y: Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height)),
+    };
+    if (down || scenePointers.current.has(e.pointerId)) scenePointers.current.set(e.pointerId, point);
+    const points = [...scenePointers.current.values()];
+    const center = points.length > 1
+      ? { x: points.reduce((sum, p) => sum + p.x, 0) / points.length,
+          y: points.reduce((sum, p) => sum + p.y, 0) / points.length }
+      : point;
+    setPointerPos({ ...center, active: true,
+      isDown: e.pointerType === 'touch' ? points.length >= 2 : (e.buttons & 1) === 1 });
   }, []);
+
+  const handleScenePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.target instanceof Element && e.target.closest('button, a, input, .hand-pip-card')) return;
+    if (e.pointerType === 'touch' && !scenePointers.current.has(e.pointerId)) return;
+    updateScenePointer(e, false);
+  }, [updateScenePointer]);
 
   const handleScenePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.target instanceof HTMLButtonElement) return;
-    setPointerPos(p => ({ ...p, isDown: true, active: true }));
-  }, []);
+    if (e.target instanceof Element && e.target.closest('button, a, input, .hand-pip-card')) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    updateScenePointer(e, true);
+  }, [updateScenePointer]);
 
-  const handleScenePointerUp = useCallback(() => {
-    setPointerPos(p => ({ ...p, isDown: false }));
+  const handleScenePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    scenePointers.current.delete(e.pointerId);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    const points = [...scenePointers.current.values()];
+    setPointerPos(p => ({ ...p, ...(points[0] || {}),
+      active: e.pointerType === 'mouse' || points.length > 0, isDown: points.length >= 2 }));
   }, []);
 
   const handleScenePointerLeave = useCallback(() => {
-    setPointerPos(p => ({ ...p, active: false, isDown: false }));
+    if (scenePointers.current.size === 0) setPointerPos(p => ({ ...p, active: false, isDown: false }));
   }, []);
 
   const cycleTopper = useCallback(() => {
@@ -264,7 +294,7 @@ export default function Home() {
             title={
               handState.active
                 ? '웹캠 손인식 끄기'
-                : '웹캠 손인식 켜기 (손가락을 모으면 10만 눈송이가 소용돌이쳐요)'
+                : '카메라 손인식 켜기 (엄지와 검지를 모으면 눈이 소용돌이쳐요)'
             }
             aria-label={handState.active ? '웹캠 손인식 끄기' : '웹캠 손인식 켜기'}
             aria-pressed={handState.active}
@@ -290,6 +320,8 @@ export default function Home() {
         onPointerMove={handleScenePointerMove}
         onPointerDown={handleScenePointerDown}
         onPointerUp={handleScenePointerUp}
+        onPointerCancel={handleScenePointerUp}
+        onLostPointerCapture={handleScenePointerUp}
         onPointerLeave={handleScenePointerLeave}
       >
         <Tree
@@ -314,7 +346,7 @@ export default function Home() {
           onStatusChange={setWebglStatus}
         />
         {/* 손가락 또는 마우스 포인터 인터랙션 시각화 레티클 */}
-        {(handState.handDetected || (pointerPos.active && !handState.active)) && (
+        {(handState.handDetected || pointerPos.active) && (
           <div
             className={`snow-reticle ${(handState.handDetected ? handState.isPinching : pointerPos.isDown) ? 'pinching' : ''}`}
             style={{
@@ -345,6 +377,7 @@ export default function Home() {
         </div>
         <div className="scene-note">MADE OF LETTERS & LOVE</div>
       </div>
+      <p className="snow-gesture-help">한 손가락으로 밀기 · 두 손가락으로 모아 소용돌이 · 마우스는 누른 채 움직이기</p>
       <CodeStream motion={motion} styleLabel={currentStyle.label} styleName={currentStyle.name} />
       <div className="dev-status" aria-hidden="true">
         <span><b>❯</b> npm run christmas -- --style={variant}</span>

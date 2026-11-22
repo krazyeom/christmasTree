@@ -42,30 +42,66 @@ test('HTTP server serves application, model, and wasm correctly', async () => {
   assert.equal(wasm.headers['content-type'], 'application/wasm', 'WASM must have application/wasm content-type');
 });
 
-test('Hand gesture pinch mathematics', () => {
-  // Pinch distance formula test
-  const calculateDistance = (p1, p2) => {
-    const dx = p1.x - p2.x;
-    const dy = p1.y - p2.y;
-    const dz = (p1.z - p2.z) * 0.8;
-    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+test('A cancelled camera attempt cannot stop a newer session', async () => {
+  const { handTracker } = await import('../lib/hand-tracker.ts');
+  const deferred = () => {
+    let resolve, reject;
+    const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+    return { promise, resolve, reject };
   };
+  const requests = [];
+  const videos = [];
+  const originals = new Map(['window', 'navigator', 'document'].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+  Object.defineProperty(globalThis, 'window', { configurable: true, value: { isSecureContext: true } });
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: {
+    mediaDevices: { getUserMedia: () => { const request = deferred(); requests.push(request); return request.promise; } },
+  } });
+  Object.defineProperty(globalThis, 'document', { configurable: true, value: {
+    createElement: () => {
+      const playback = deferred();
+      const video = { playback, play: () => playback.promise, pause() {}, remove() {}, srcObject: null };
+      videos.push(video);
+      return video;
+    },
+  } });
+  const makeStream = () => {
+    const track = { stops: 0, stop() { this.stops++; } };
+    return { track, getTracks: () => [track] };
+  };
+  try {
+    const oldStream = makeStream();
+    const oldStart = handTracker.start();
+    requests[0].resolve(oldStream);
+    await Promise.resolve();
+    handTracker.stop();
+    const newStream = makeStream();
+    const newStart = handTracker.start();
+    requests[1].resolve(newStream);
+    await Promise.resolve();
+    videos[0].playback.resolve();
+    assert.equal(await oldStart, false);
+    assert.equal(handTracker.getState().active, true, 'new session must stay active');
+    assert.equal(handTracker.getVideoElement(), videos[1]);
+    assert.equal(newStream.track.stops, 0, 'stale cleanup must not stop new tracks');
+    assert.ok(oldStream.track.stops >= 1);
+    handTracker.stop();
+    videos[1].playback.reject(new Error('cancelled playback'));
+    assert.equal(await newStart, false);
+    assert.ok(newStream.track.stops >= 1);
+    assert.equal(handTracker.getVideoElement(), null);
 
-  const thumb = { x: 0.5, y: 0.5, z: 0 };
-  const indexPinched = { x: 0.52, y: 0.53, z: 0.01 };
-  const indexOpen = { x: 0.7, y: 0.8, z: 0 };
-
-  const pinchDist = calculateDistance(thumb, indexPinched);
-  const openDist = calculateDistance(thumb, indexOpen);
-
-  assert.ok(pinchDist < 0.075, `Pinched distance (${pinchDist}) should be < 0.075`);
-  assert.ok(openDist > 0.075, `Open distance (${openDist}) should be > 0.075`);
-});
-
-test('Particle simulation recycling boundary logic', () => {
-  let pos = { x: 0.1, y: -1.2, z: 0 };
-  if (pos.y < -1.15) {
-    pos.y = 1.15;
+    const lateStream = makeStream();
+    const lateStart = handTracker.start();
+    handTracker.stop();
+    requests[2].resolve(lateStream);
+    assert.equal(await lateStart, false);
+    assert.equal(lateStream.track.stops, 1, 'late permission grant is immediately released');
+    assert.equal(handTracker.getState().active, false);
+  } finally {
+    handTracker.stop();
+    for (const [key, descriptor] of originals) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else delete globalThis[key];
+    }
   }
-  assert.equal(pos.y, 1.15, 'Recycled particle must reset to top');
 });

@@ -8,6 +8,7 @@ export interface HandPoint {
 
 export interface HandTrackingState {
   active: boolean;
+  starting?: boolean;
   handDetected: boolean;
   tipX: number; // 0..1 normalized (mirrored horizontally)
   tipY: number; // 0..1 normalized
@@ -81,13 +82,33 @@ class HandTrackerService {
 
     this.notify({ active: true, error: undefined, handDetected: false });
 
-    try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('이 브라우저는 카메라 미디어 장치를 지원하지 않습니다.');
+    let stream: MediaStream | null = null;
+    let video: HTMLVideoElement | null = null;
+    let landmarker: typeof this.handLandmarker = null;
+    const releaseAttempt = () => {
+      stream?.getTracks().forEach(track => track.stop());
+      if (video) {
+        video.pause();
+        video.srcObject = null;
+        video.remove();
       }
+      landmarker?.close();
+      landmarker = null;
+    };
+    const cancelled = () => {
+      if (this.genToken === currentToken) return false;
+      releaseAttempt();
+      return true;
+    };
 
-      // 1. WebCam 권한 요청
-      const stream = await navigator.mediaDevices.getUserMedia({
+    try {
+      if (!window.isSecureContext) {
+        throw new Error('카메라는 HTTPS 주소에서 사용할 수 있습니다. 지금은 화면을 터치해서 눈을 움직여보세요.');
+      }
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('이 브라우저는 카메라를 지원하지 않습니다. 화면 터치로 눈을 움직여보세요.');
+      }
+      stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: 'user',
           width: { ideal: 640 },
@@ -96,74 +117,61 @@ class HandTrackerService {
         },
         audio: false,
       });
-
-      if (this.genToken !== currentToken) {
-        stream.getTracks().forEach((t) => t.stop());
-        return false;
-      }
-
+      if (cancelled()) return false;
+      video = document.createElement('video');
+      video.playsInline = true;
+      video.muted = true;
+      video.autoplay = true;
+      video.srcObject = stream;
       this.stream = stream;
+      this.videoEl = video;
+      this.notify({ starting: true });
+      await video.play();
+      if (cancelled()) return false;
 
-      // 2. 비디오 엘리먼트 준비
-      if (!this.videoEl) {
-        const video = document.createElement('video');
-        video.setAttribute('playsinline', 'true');
-        video.setAttribute('muted', 'true');
-        video.muted = true;
-        video.autoplay = true;
-        this.videoEl = video;
-      }
-
-      this.videoEl.srcObject = stream;
-      await this.videoEl.play();
-
-      if (this.genToken !== currentToken) {
-        this.stop();
-        return false;
-      }
-
-      // 3. MediaPipe Hand Landmarker 로딩
-      if (!this.handLandmarker) {
-        const { HandLandmarker, FilesetResolver } = await import('@mediapipe/tasks-vision');
-        const vision = await FilesetResolver.forVisionTasks('/mediapipe/wasm');
-
-        if (this.genToken !== currentToken) {
-          this.stop();
-          return false;
-        }
-
-        this.handLandmarker = await HandLandmarker.createFromOptions(vision, {
-          baseOptions: {
-            modelAssetPath: '/mediapipe/hand_landmarker.task',
-            delegate: 'GPU',
-          },
-          runningMode: 'VIDEO',
-          numHands: 1,
-          minHandDetectionConfidence: 0.5,
-          minHandPresenceConfidence: 0.5,
-          minTrackingConfidence: 0.5,
+      const { HandLandmarker, FilesetResolver } = await import('@mediapipe/tasks-vision');
+      if (cancelled()) return false;
+      const vision = await FilesetResolver.forVisionTasks('/mediapipe/wasm');
+      if (cancelled()) return false;
+      const options = {
+        baseOptions: { modelAssetPath: '/mediapipe/hand_landmarker.task' },
+        runningMode: 'VIDEO' as const,
+        numHands: 1,
+        minHandDetectionConfidence: 0.5,
+        minHandPresenceConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+      };
+      try {
+        landmarker = await HandLandmarker.createFromOptions(vision, {
+          ...options, baseOptions: { ...options.baseOptions, delegate: 'GPU' },
         });
-
-        if (this.genToken !== currentToken) {
-          this.stop();
-          return false;
-        }
+      } catch {
+        if (cancelled()) return false;
+        landmarker = await HandLandmarker.createFromOptions(vision, {
+          ...options, baseOptions: { ...options.baseOptions, delegate: 'CPU' },
+        });
       }
-
+      if (cancelled()) return false;
+      this.handLandmarker = landmarker;
       this.isStarting = false;
       this.lastTime = -1;
+      this.smoothedVx = this.smoothedVy = 0;
+      this.notify({ starting: false });
       this.startLoop();
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      releaseAttempt();
       if (this.genToken !== currentToken) return false;
-      this.isStarting = false;
       this.stop();
+      const error = err instanceof Error ? err : null;
       const message =
-        err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError'
+        error?.name === 'NotAllowedError' || error?.name === 'PermissionDeniedError'
           ? '카메라 접근 권한이 거부되었습니다. 주소창 권한 설정을 확인해주세요.'
-          : err?.name === 'NotFoundError'
-          ? '사용 가능한 웹캠 장치를 찾을 수 없습니다.'
-          : err?.message || '카메라를 초기화하지 못했습니다.';
+          : error?.name === 'NotFoundError'
+          ? '사용 가능한 카메라를 찾을 수 없습니다.'
+          : error?.message?.startsWith('카메라') || error?.message?.startsWith('이 브라우저')
+          ? error.message
+          : '손인식을 시작하지 못했습니다. 다시 시도하거나 화면 터치를 사용해주세요.';
       this.notify({ active: false, error: message });
       return false;
     }
@@ -192,10 +200,15 @@ class HandTrackerService {
     if (this.videoEl) {
       this.videoEl.pause();
       this.videoEl.srcObject = null;
+      this.videoEl.remove();
+      this.videoEl = null;
     }
+    this.handLandmarker?.close();
+    this.handLandmarker = null;
 
     this.notify({
       active: false,
+      starting: false,
       handDetected: false,
       landmarks: null,
       isPinching: false,
@@ -238,8 +251,8 @@ class HandTrackerService {
             const isPinching = pinchDistance < 0.075;
 
             // 속도 계산 (검지 기준)
-            const instantVx = (index.x - this.lastTipX) * 30;
-            const instantVy = (index.y - this.lastTipY) * 30;
+            const instantVx = this.state.handDetected ? (index.x - this.lastTipX) * 30 : 0;
+            const instantVy = this.state.handDetected ? (index.y - this.lastTipY) * 30 : 0;
             this.smoothedVx = this.smoothedVx * 0.6 + instantVx * 0.4;
             this.smoothedVy = this.smoothedVy * 0.6 + instantVy * 0.4;
 

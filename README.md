@@ -45,9 +45,9 @@ PM2_HOME="$PWD/.runtime/pm2" ./node_modules/.bin/pm2 list
 ```ts
 export const christmasConfig = {
   greeting: 'Happy Christmas',
-  recipient: 'LTC', // 원하는 이름이나 문구
-  greetingAppearsAfterSeconds: 3,
-  treeBuildSeconds: 5,
+  recipient: '', // 원하는 이름이나 문구
+  greetingAppearsAfterSeconds: 2.2,
+  treeBuildSeconds: 2.4,
   rotationSpeed: 0.33, // 초당 회전 속도
   snowCount: 230, // 눈의 개수
   snowSpeed: 3.1, // 눈 속도 배율
@@ -76,7 +76,7 @@ export const christmasConfig = {
 
 - **온디바이스 손가락 추적**: 웹캠 손가락 제스처 인식은 사용자 브라우저 내부에서만 연산(100% On-Device)되며, 어떠한 비디오 프레임이나 개인정보도 외부 서버로 전송하지 않습니다.
 - **명시적 권한 제어**: 카메라는 사용자가 상단 또는 툴바의 **🖐 손인식** 버튼을 직접 눌렀을 때만 켜지며, 닫기 버튼이나 토글 클릭 시 즉시 카메라 스트림 트랙(`stream.getTracks().forEach(t => t.stop())`)을 완전히 중단하고 비디오 하드웨어 점유를 해제합니다.
-- **보안 환경 요구사항**: 브라우저 보안 규정에 따라 웹캠 인터페이스는 안전한 오리진(`http://localhost:*` 또는 `https://`)에서만 동작합니다. 카메라가 없거나 권한을 허용하지 않더라도 화면 내 마우스 클릭 및 터치 드래그로 동일하게 10만 파티클 소용돌이 조작이 가능합니다.
+- **보안 환경 요구사항**: 브라우저 보안 규정에 따라 웹캠 인터페이스는 안전한 오리진(`http://localhost:*` 또는 `https://`)에서만 동작합니다. 카메라가 없거나 권한을 허용하지 않더라도 화면에서 마우스를 누른 채 움직이거나 두 손가락을 모아 소용돌이를 조작합니다. 한 손가락 드래그는 눈을 밀어냅니다. 모바일 기본 눈송이 수는 28,000개입니다.
 - `.gitignore`는 환경 파일, 인증서·키, 로컬 자격증명 경로, PM2 런타임·로그, IDE 및 OS 파일을 제외합니다. 단, `.gitignore`는 이미 추적 중인 파일이나 코드에 직접 쓴 비밀정보를 제거하지 않으므로 커밋 전 확인이 필요합니다. Git 커밋 작성자도 공개 noreply 주소를 사용합니다.
 
 ## 검증
@@ -86,3 +86,12 @@ npm run typecheck
 npm test
 npm run build
 ```
+
+## 모바일 조작과 검증 기록
+
+트리 안에서는 한 손가락으로 눈을 밀고 두 손가락으로 소용돌이를 만듭니다. 페이지 스크롤은 트리 바깥에서 시작합니다. 카메라는 HTTPS가 필요하며, 일반 HTTP로 접속한 휴대전화에서는 터치 조작을 사용합니다. 탭을 벗어나면 카메라가 꺼지며 다시 켜야 합니다.
+
+- [GPU 눈송이·카메라 동작 명세](file:///home/krazyeom/dev/christmasTree/docs/webgl2-gpu-snow-and-hand-tracking.md)
+- [모바일·카메라 수명 수정 작업 노트](file:///home/krazyeom/dev/christmasTree/notes/2026-11-23-mobile-camera-lifecycle.md)
+
+테스트는 Node 22.6 이상에서 실행합니다. 실제 휴대전화 성능과 원본 영상의 시각적 일치는 아직 검증하지 않았습니다.

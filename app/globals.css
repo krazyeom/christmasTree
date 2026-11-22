@@ -78,3 +78,14 @@ footer a{color:#c8d7c5;text-decoration:underline;text-underline-offset:3px}foote
 
 
 
+
+/* Keep gestures inside the scene; the rest of the page remains scrollable. */
+.scene{touch-action:none}
+.snow-gesture-help{margin:0;padding:10px 14px;color:#a8baaa;font-size:11px;text-align:center;line-height:1.6;border-top:1px solid var(--line)}
+@media(max-width:640px){
+  .stage-top{height:auto;min-height:44px;flex-wrap:wrap;gap:8px;padding:8px 12px}
+  .stage-top-right{flex-wrap:wrap;justify-content:flex-end}
+  .hand-toggle-pill,.topper-pill-btn,.apple-morph-btn,.quick-sound-btn,.sound-status-pill{min-height:40px}
+  .effects button,.themes button,.pip-btn{min-width:40px;min-height:40px}
+  .snow-gesture-help{font-size:10px;padding:9px}
+}
