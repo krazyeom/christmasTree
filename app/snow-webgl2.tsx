@@ -81,7 +81,7 @@ void main() {
         float strength = (1.0 - dist / radius) * 2.8;
         vel.xy += pushDir * strength * dt + u_handVelocity * (1.0 - dist / radius) * 1.1;
       }
-    } else if (u_fingerCount == 2 || u_isPinching == 1) {
+    } else if (u_fingerCount == 2 || (u_fingerCount == 0 && u_isPinching == 1)) {
       // 두 손가락 또는 엄지-검지 핀치: 소용돌이 흡인
       if (dist < 0.85) {
         vec2 normDir = toHand / max(dist, 0.0001);

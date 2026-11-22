@@ -52,6 +52,7 @@ export default function Home() {
   const [buttonControlDown, setButtonControlDown] = useState(false);
   const [buttonControlPoint, setButtonControlPoint] = useState({ x: 0.5, y: 0.58 });
   const [buttonFingerCount, setButtonFingerCount] = useState(1);
+  const [selectedFingerCount, setSelectedFingerCount] = useState<number | null>(null);
   const buttonControlRef = useRef<HTMLDivElement>(null);
 
   const moveButtonControl = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
@@ -74,6 +75,7 @@ export default function Home() {
     e.currentTarget.setPointerCapture(e.pointerId);
     setButtonControlPoint(point);
     setButtonFingerCount(fingerCount);
+    setSelectedFingerCount(fingerCount);
     setButtonControlDown(true);
     setButtonControlSwirl(swirl);
   }, []);
@@ -90,6 +92,7 @@ export default function Home() {
     e.stopPropagation();
     setButtonControlPoint(point);
     setButtonFingerCount(fingerCount);
+    setSelectedFingerCount(fingerCount);
     setButtonControlDown(true);
     setButtonControlSwirl(swirl);
   }, []);
@@ -113,10 +116,14 @@ export default function Home() {
       setPointerPos({ ...buttonControlPoint, active: true, isDown: buttonControlSwirl, fingerCount: buttonFingerCount });
       return;
     }
-    if (!scenePointers.current.size && !handState.handDetected) {
-      setPointerPos(p => ({ ...p, active: false, isDown: false }));
+    if (selectedFingerCount !== null && !handState.handDetected && !scenePointers.current.size) {
+      setPointerPos({ ...buttonControlPoint, active: true, isDown: selectedFingerCount === 2, fingerCount: selectedFingerCount });
+      return;
     }
-  }, [buttonControlDown, buttonControlPoint, buttonControlSwirl, buttonFingerCount, handState.handDetected]);
+    if (!scenePointers.current.size && !handState.handDetected) {
+      setPointerPos(p => ({ ...p, active: false, isDown: false, fingerCount: 0 }));
+    }
+  }, [buttonControlDown, buttonControlPoint, buttonControlSwirl, buttonFingerCount, selectedFingerCount, handState.handDetected]);
 
   useEffect(() => {
     const unsub = handTracker.subscribe(setHandState);
@@ -163,6 +170,7 @@ export default function Home() {
       y: points.reduce((sum, point) => sum + point.y, 0) / points.length,
     };
     setPointerPos({ ...center, active: true, isDown: points.length >= 2, fingerCount: points.length });
+    setSelectedFingerCount(null);
   }, []);
 
   const handleScenePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -200,6 +208,7 @@ export default function Home() {
         isDown: points.length >= 2,
         fingerCount: points.length,
       });
+      setSelectedFingerCount(null);
     } else {
       setPointerPos(p => ({ ...p, active: e.pointerType === 'mouse', isDown: false }));
     }
@@ -433,7 +442,7 @@ export default function Home() {
         {/* 손가락 또는 마우스 포인터 인터랙션 시각화 레티클 */}
         {(handState.handDetected || pointerPos.active) && (
           <div
-            className={`snow-reticle ${(handState.handDetected ? handState.isPinching : pointerPos.isDown) ? 'pinching' : ''}`}
+            className={`snow-reticle ${(handState.handDetected ? handState.isPinching : pointerPos.isDown) ? 'pinching' : ''} finger-effect-${handState.handDetected ? handState.fingerCount : pointerPos.fingerCount || selectedFingerCount || 0}`}
             style={{
               left: `${(handState.handDetected ? handState.tipX : pointerPos.x) * 100}%`,
               top: `${(handState.handDetected ? handState.tipY : pointerPos.y) * 100}%`,
@@ -442,18 +451,18 @@ export default function Home() {
           >
             <div className="reticle-core" />
             <div className="reticle-wave" />
-            {(handState.handDetected ? handState.isPinching : pointerPos.isDown) && (
-              <span className="reticle-tag">PINCH</span>
+            {(handState.handDetected ? handState.fingerCount > 0 : pointerPos.fingerCount ? pointerPos.fingerCount > 0 : selectedFingerCount !== null) && (
+              <span className="reticle-tag">{handState.handDetected ? handState.fingerCount : pointerPos.fingerCount || selectedFingerCount}</span>
             )}
           </div>
         )}
-        <div className="finger-count-badge" aria-live="polite">
-          {handState.active
-            ? handState.handDetected
+        {handState.active && (
+          <div className="finger-count-badge" aria-live="polite">
+            {handState.handDetected
               ? `손가락 ${handState.fingerCount}개 · ${['대기', '바람 밀기', '소용돌이', '회오리', '강풍', '눈 모으기'][handState.fingerCount]}`
-              : '손을 켜면 1~5개 동작을 사용할 수 있어요'
-            : '카메라를 켜고 손가락 1~5개를 펴보세요'}
-        </div>
+              : '손을 켜면 1~5개 동작을 사용할 수 있어요'}
+          </div>
+        )}
         {!playing && autoplayPending && (
           <div className="scene-hint" role="button" aria-label="음악 재생 시작">
             ♪ 화면을 클릭하면 크리스마스 캐럴이 시작돼요
@@ -468,11 +477,6 @@ export default function Home() {
           <span>magic {motion ? 'in progress' : 'paused'}</span>
         </div>
         <div className="scene-note">MADE OF LETTERS & LOVE</div>
-        <div className="finger-count-badge" aria-live="polite">
-          {handState.handDetected
-            ? `손가락 ${handState.fingerCount}개 · ${['대기', '바람 밀기', '소용돌이', '회오리', '강풍', '눈 모으기'][handState.fingerCount]}`
-            : '카메라를 켜고 손가락 1~5개를 펴보세요'}
-        </div>
         <div className="snow-button-pad" ref={buttonControlRef} role="group" aria-label="손가락 수별 눈송이 효과">
           {Array.from({ length: 5 }, (_, index) => {
             const count = index + 1;
@@ -490,9 +494,9 @@ export default function Home() {
               <button
                 key={count}
                 type="button"
-                className={`snow-pad-button finger-pad-button finger-pad-${count} ${buttonControlDown && buttonFingerCount === count ? 'active' : ''}`}
+                className={`snow-pad-button finger-pad-button finger-pad-${count} ${selectedFingerCount === count || (handState.handDetected && handState.fingerCount === count) ? 'active' : ''}`}
                 aria-label={`${count}개 손가락 효과: ${labels[index]}`}
-                aria-pressed={buttonControlDown && buttonFingerCount === count}
+                aria-pressed={selectedFingerCount === count || (handState.handDetected && handState.fingerCount === count)}
                 onPointerDown={start}
                 onPointerUp={stopButtonControl}
                 onPointerCancel={stopButtonControl}
