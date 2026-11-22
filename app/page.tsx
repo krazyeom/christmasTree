@@ -144,41 +144,57 @@ export default function Home() {
 
   const scenePointers = useRef(new Map<number, { x: number; y: number }>());
 
-  const updateScenePointer = useCallback((e: React.PointerEvent<HTMLDivElement>, down: boolean) => {
-    const rect = e.currentTarget.getBoundingClientRect();
+  const setScenePointer = useCallback((target: HTMLDivElement, pointerId: number, clientX: number, clientY: number) => {
+    const rect = target.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
-    const point = {
-      x: Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)),
-      y: Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height)),
-    };
-    if (down || scenePointers.current.has(e.pointerId)) scenePointers.current.set(e.pointerId, point);
+    scenePointers.current.set(pointerId, {
+      x: Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)),
+      y: Math.max(0, Math.min(1, (clientY - rect.top) / rect.height)),
+    });
     const points = [...scenePointers.current.values()];
-    const center = points.length > 1
-      ? { x: points.reduce((sum, p) => sum + p.x, 0) / points.length,
-          y: points.reduce((sum, p) => sum + p.y, 0) / points.length }
-      : point;
-    setPointerPos({ ...center, active: true,
-      isDown: e.pointerType === 'touch' ? points.length >= 2 : (e.buttons & 1) === 1 });
+    const center = {
+      x: points.reduce((sum, point) => sum + point.x, 0) / points.length,
+      y: points.reduce((sum, point) => sum + point.y, 0) / points.length,
+    };
+    setPointerPos({ ...center, active: true, isDown: points.length >= 2 });
   }, []);
 
   const handleScenePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (e.target instanceof Element && e.target.closest('button, a, input, .hand-pip-card')) return;
     if (e.pointerType === 'touch' && !scenePointers.current.has(e.pointerId)) return;
-    updateScenePointer(e, false);
-  }, [updateScenePointer]);
+    if (e.pointerType !== 'touch' && !scenePointers.current.has(e.pointerId)) {
+      setPointerPos({
+        x: Math.max(0, Math.min(1, (e.clientX - e.currentTarget.getBoundingClientRect().left) / e.currentTarget.getBoundingClientRect().width)),
+        y: Math.max(0, Math.min(1, (e.clientY - e.currentTarget.getBoundingClientRect().top) / e.currentTarget.getBoundingClientRect().height)),
+        active: true,
+        isDown: (e.buttons & 1) === 1,
+      });
+      return;
+    }
+    setScenePointer(e.currentTarget, e.pointerId, e.clientX, e.clientY);
+  }, [setScenePointer]);
 
   const handleScenePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (e.target instanceof Element && e.target.closest('button, a, input, .hand-pip-card')) return;
+    if (e.pointerType === 'touch') e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
-    updateScenePointer(e, true);
-  }, [updateScenePointer]);
+    setScenePointer(e.currentTarget, e.pointerId, e.clientX, e.clientY);
+  }, [setScenePointer]);
 
   const handleScenePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     scenePointers.current.delete(e.pointerId);
     if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
     const points = [...scenePointers.current.values()];
-    setPointerPos(p => ({ ...p, ...(points[0] || {}),
-      active: e.pointerType === 'mouse' || points.length > 0, isDown: points.length >= 2 }));
+    if (points.length) {
+      setPointerPos({
+        x: points.reduce((sum, point) => sum + point.x, 0) / points.length,
+        y: points.reduce((sum, point) => sum + point.y, 0) / points.length,
+        active: true,
+        isDown: points.length >= 2,
+      });
+    } else {
+      setPointerPos(p => ({ ...p, active: e.pointerType === 'mouse', isDown: false }));
+    }
   }, []);
 
   const handleScenePointerLeave = useCallback(() => {
