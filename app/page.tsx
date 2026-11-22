@@ -2,6 +2,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Tree, { palettes, type TreeTopper } from './tree';
 import CodeStream from './code-stream';
+import SnowWebGL2 from './snow-webgl2';
+import HandCameraPip from './hand-camera-pip';
+import { handTracker, type HandTrackingState } from '@/lib/hand-tracker';
 import { MusicBox, songs } from '@/lib/music';
 import { christmasConfig } from '@/lib/config';
 import { treeStyles, type TreeStyle } from '@/lib/tree-styles';
@@ -30,6 +33,64 @@ export default function Home() {
     today: 1,
     active: 1,
   });
+
+  // 손가락 추적 및 WebGL2 눈 시뮬레이션 상태
+  const [handState, setHandState] = useState<HandTrackingState>(handTracker.getState());
+  const [webglStatus, setWebglStatus] = useState({
+    supported: true,
+    active: true,
+    particleCount: 100000,
+    handActive: false,
+  });
+  const [pointerPos, setPointerPos] = useState({
+    x: 0.5,
+    y: 0.5,
+    active: false,
+    isDown: false,
+  });
+
+  useEffect(() => {
+    const unsub = handTracker.subscribe(setHandState);
+    return () => {
+      unsub();
+      handTracker.stop();
+    };
+  }, []);
+
+  const toggleHandTracking = useCallback(async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (handState.active) {
+      handTracker.stop();
+    } else {
+      setError('');
+      const started = await handTracker.start();
+      if (!started) {
+        const err = handTracker.getState().error;
+        if (err) setError(err);
+      }
+    }
+  }, [handState.active]);
+
+  const handleScenePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+    setPointerPos(p => ({ ...p, x, y, active: true }));
+  }, []);
+
+  const handleScenePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.target instanceof HTMLButtonElement) return;
+    setPointerPos(p => ({ ...p, isDown: true, active: true }));
+  }, []);
+
+  const handleScenePointerUp = useCallback(() => {
+    setPointerPos(p => ({ ...p, isDown: false }));
+  }, []);
+
+  const handleScenePointerLeave = useCallback(() => {
+    setPointerPos(p => ({ ...p, active: false, isDown: false }));
+  }, []);
 
   const cycleTopper = useCallback(() => {
     setTopper(curr => (curr === 'red-apple' ? 'white-apple' : 'red-apple'));
@@ -197,18 +258,91 @@ export default function Home() {
               </button>
             </>
           )}
+          <button
+            className={`hand-toggle-pill ${handState.active ? 'active' : ''} ${handState.handDetected ? 'detected' : ''}`}
+            onClick={toggleHandTracking}
+            title={
+              handState.active
+                ? '웹캠 손인식 끄기'
+                : '웹캠 손인식 켜기 (손가락을 모으면 10만 눈송이가 소용돌이쳐요)'
+            }
+            aria-label={handState.active ? '웹캠 손인식 끄기' : '웹캠 손인식 켜기'}
+            aria-pressed={handState.active}
+          >
+            <span className="hand-ico">🖐</span>
+            <span>
+              {handState.active
+                ? handState.handDetected
+                  ? handState.isPinching
+                    ? '✨ 소용돌이'
+                    : '손인식 중'
+                  : '카메라 대기'
+                : '손인식'}
+            </span>
+          </button>
           <button onClick={fullscreen} title="전체 화면" aria-label="전체 화면 전환">⛶</button>
         </div>
       </div>
       <div className="style-picker" role="group" aria-label="트리 버전 선택">{treeStyles.map(style => <button key={style.id} aria-pressed={variant === style.id} title={style.description} onClick={() => { setVariant(style.id); setReplay(v => v + 1); setTick(0); }}><span>{style.icon}</span>{style.name}</button>)}</div>
-      <div className="scene" onClick={() => { if (!playing) void startMusic(song); setBurst(b => b ? b : 1); }}>
-        <Tree variant={variant} key={replay} theme={theme} snow={snow} motion={motion} burst={burst} recipient={recipient} appleTrigger={replay} topper={topper} />
+      <div
+        className="scene"
+        onClick={() => { if (!playing) void startMusic(song); setBurst(b => b ? b : 1); }}
+        onPointerMove={handleScenePointerMove}
+        onPointerDown={handleScenePointerDown}
+        onPointerUp={handleScenePointerUp}
+        onPointerLeave={handleScenePointerLeave}
+      >
+        <Tree
+          variant={variant}
+          key={replay}
+          theme={theme}
+          snow={snow}
+          motion={motion}
+          burst={burst}
+          recipient={recipient}
+          appleTrigger={replay}
+          topper={topper}
+          suppressAsciiSnow={webglStatus.supported && snow}
+        />
+        <SnowWebGL2
+          theme={theme}
+          snow={snow}
+          motion={motion}
+          burst={burst}
+          handState={handState}
+          pointerPos={pointerPos}
+          onStatusChange={setWebglStatus}
+        />
+        {/* 손가락 또는 마우스 포인터 인터랙션 시각화 레티클 */}
+        {(handState.handDetected || (pointerPos.active && !handState.active)) && (
+          <div
+            className={`snow-reticle ${(handState.handDetected ? handState.isPinching : pointerPos.isDown) ? 'pinching' : ''}`}
+            style={{
+              left: `${(handState.handDetected ? handState.tipX : pointerPos.x) * 100}%`,
+              top: `${(handState.handDetected ? handState.tipY : pointerPos.y) * 100}%`,
+            }}
+            aria-hidden="true"
+          >
+            <div className="reticle-core" />
+            <div className="reticle-wave" />
+            {(handState.handDetected ? handState.isPinching : pointerPos.isDown) && (
+              <span className="reticle-tag">PINCH</span>
+            )}
+          </div>
+        )}
         {!playing && autoplayPending && (
           <div className="scene-hint" role="button" aria-label="음악 재생 시작">
             ♪ 화면을 클릭하면 크리스마스 캐럴이 시작돼요
           </div>
         )}
-        <div className="telemetry" aria-hidden="true"><span>{currentStyle.label}</span><span>renderer WebGL-free / ASCII</span><span>rotation {((tick * .35 * christmasConfig.rotationSpeed * 180 / Math.PI) % 360).toFixed(1)}°</span><span>magic {motion ? 'in progress' : 'paused'}</span></div>
+        <div className="telemetry" aria-hidden="true">
+          <span>{currentStyle.label}</span>
+          <span>
+            renderer {webglStatus.supported && snow ? `WebGL2 GPU Snow (${(webglStatus.particleCount / 1000).toFixed(0)}k) / ASCII` : 'WebGL-free / ASCII'}
+          </span>
+          <span>rotation {((tick * .35 * christmasConfig.rotationSpeed * 180 / Math.PI) % 360).toFixed(1)}°</span>
+          <span>magic {motion ? 'in progress' : 'paused'}</span>
+        </div>
         <div className="scene-note">MADE OF LETTERS & LOVE</div>
       </div>
       <CodeStream motion={motion} styleLabel={currentStyle.label} styleName={currentStyle.name} />
@@ -250,6 +384,15 @@ export default function Home() {
               </button>
             </>
           )}
+          <button
+            aria-pressed={handState.active}
+            className={`hand-effect-btn ${handState.active ? 'active' : ''}`}
+            onClick={toggleHandTracking}
+            title="웹캠 손가락 인식 토글 (마우스/터치 드래그로도 소용돌이 인터랙션 가능)"
+            aria-label="웹캠 손가락 인식 토글"
+          >
+            🖐 <span>손인식</span>
+          </button>
           <button aria-pressed={snow} onClick={() => setSnow(!snow)}>❄ <span>눈</span></button>
           <button aria-pressed={burst > 0} onClick={() => setBurst(burst ? 0 : 1)}>✧ <span>선물</span></button>
           <button onClick={() => setMotion(!motion)} aria-label={motion ? '애니메이션 멈추기' : '애니메이션 재개'}>{motion ? 'Ⅱ' : '▷'}</button>
@@ -257,6 +400,7 @@ export default function Home() {
         </div>
       </div>
     </section>
+    <HandCameraPip trackingState={handState} onClose={() => handTracker.stop()} />
     <section className="bottom-row"><div className="music-player" data-music-controls><button className={`play ${!playing && autoplayPending ? 'pulse' : ''}`} aria-label={playing ? '캐럴 일시 정지' : '캐럴 재생'} onClick={toggleMusic}>{playing ? 'Ⅱ' : '▶'}</button><div className="song-info"><span className="eyebrow">A CHRISTMAS MUSIC BOX</span><select aria-label="캐럴 선택" value={song} onChange={e => { const n = Number(e.target.value); setSong(n); if (playing && box.current && !box.current.isClosed) { box.current.changeSong(n); } else { void startMusic(n); } }}>{songs.map((s,i) => <option value={i} key={s.title}>{s.title}</option>)}</select><small>{playing ? '직접 합성한 오르골 연주' : autoplayPending ? '화면 어디든 터치하거나 재생(▶)을 누르면 바로 시작돼요' : '재생을 눌러 크리스마스를 들어보세요'}</small></div><div className={'equalizer ' + (playing ? 'on' : '')} aria-hidden="true">{[0,1,2,3,4].map(i => <i key={i} style={{animationDelay:`${i * .16}s`}} />)}</div><label className="volume">♪<input aria-label="음악 음량" type="range" min="0" max="1" step=".01" value={volume} onChange={e => { const v = Number(e.target.value); setVolume(v); volumeRef.current = v; box.current?.volume(v); }} /></label></div><button className="edit-wish" onClick={() => setEditing(!editing)}>✎ <span>나만의 인사말</span> <span>↗</span></button></section>
     {editing && <form className="wish-editor" onSubmit={e => { e.preventDefault(); setEditing(false); }}><label htmlFor="recipient">{christmasConfig.greeting} 뒤에 올 문구</label><div><input id="recipient" maxLength={30} value={recipient} onChange={e => setRecipient(e.target.value)} placeholder="받는 사람 또는 전하고 싶은 말" /><button type="submit">완료</button></div></form>}
     {error && <p role="status" className="error">{error}</p>}

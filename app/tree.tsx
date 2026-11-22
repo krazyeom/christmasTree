@@ -88,7 +88,8 @@ export default function Tree({
   recipient,
   variant,
   appleTrigger = 0,
-  topper = 'red-apple'
+  topper = 'red-apple',
+  suppressAsciiSnow = false
 }: {
   variant: TreeStyle;
   theme: number;
@@ -98,6 +99,7 @@ export default function Tree({
   recipient: string;
   appleTrigger?: number;
   topper?: TreeTopper;
+  suppressAsciiSnow?: boolean;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const phase = useRef(0);
@@ -187,8 +189,8 @@ export default function Tree({
         }
       }
 
-      // 눈 내림 효과
-      if (snow) {
+      // 눈 내림 효과 (WebGL2 고성능 파티클 오버레이가 활성화된 경우 ASCII 눈을 가볍게 숨김)
+      if (snow && !suppressAsciiSnow) {
         ctx.font = `${11 * scale}px monospace`;
         for (let i = 0; i < christmasConfig.snowCount; i++) {
           const x = ((i * 137.51 + Math.sin(t * 0.3 + i) * 25) % w + w) % w;
