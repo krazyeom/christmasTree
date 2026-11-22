@@ -112,13 +112,6 @@ void main() {
         float falloff = 1.0 - smoothstep(0.0, 1.0, dist);
         vel.xy += normDir * 7.0 * falloff * dt / max(mass, 0.5);
       }
-    } else if (u_isPinching == 1) {
-      if (dist < 0.85) {
-        vec2 normDir = toHand / max(dist, 0.0001);
-        vec2 tangent = vec2(-normDir.y, normDir.x);
-        float falloff = 1.0 - smoothstep(0.0, 0.85, dist);
-        vel.xy += (normDir * 4.2 + tangent * 3.5) * falloff * dt * (1.2 / max(mass, 0.5));
-      }
     } else if (dist < 0.32) {
       // 마우스·펜·버튼: 기본 눈 밀기
       vec2 away = pos.xy - u_handPos;
@@ -127,7 +120,6 @@ void main() {
       vel.xy += pushDir * pushStrength * dt;
       vel.xy += u_handVelocity * (1.0 - dist / 0.32) * 0.8;
     }
-  }
   }
 
   // 4. 버스트(선물 클릭) 파동 효과
