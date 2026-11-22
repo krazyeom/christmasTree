@@ -10,6 +10,9 @@
 
 ## 주요 변경
 
+- [페이지](file:///home/krazyeom/dev/christmasTree/app/page.tsx): 트리 안에 방향 패드와 가운데 소용돌이 버튼을 추가했다. 누르는 동안 버튼의 위치에서 눈을 밀거나 빨아들이고, 포인터를 놓거나 취소하면 바로 멈춘다. 마우스·터치·펜과 키보드 포커스를 지원한다. 버튼 조작과 배경 음악/선물 클릭 이벤트가 섞이지 않도록 전파를 차단한다.
+- [스타일](file:///home/krazyeom/dev/christmasTree/app/globals.css): 패드를 트리 오른쪽에 반투명으로 배치하고 모바일에서도 터치하기 쉬운 크기로 표시한다.
+- [기술 문서](file:///home/krazyeom/dev/christmasTree/docs/webgl2-gpu-snow-and-hand-tracking.md): 카메라 없이 버튼으로 눈을 조작하는 방법을 추가했다.
 - [페이지](file:///home/krazyeom/dev/christmasTree/app/page.tsx): 포인터별 접점을 추적한다. 한 손가락은 밀기, 두 손가락은 중심 소용돌이로 연결한다. 최초 좌표, 포인터 캡처, 취소·이탈 정리를 추가했다. 트리 바깥에서는 페이지 스크롤을 유지한다.
 - [카메라 서비스](file:///home/krazyeom/dev/christmasTree/lib/hand-tracker.ts): 초기화 시도마다 자원을 소유하도록 바꾸고 취소된 시도가 새 세션을 정지하지 않게 했다. 종료 시 모델까지 닫는다. GPU 초기화 실패 시 CPU를 시도하며 보안 출처와 권한 오류를 안내한다. 페이지가 숨겨지면 카메라를 끈다.
 - [미리보기](file:///home/krazyeom/dev/christmasTree/app/hand-camera-pip.tsx): 비디오 준비 후 부착하고 최소화 복원 시 다시 연결한다.
@@ -42,6 +45,7 @@
 - 실제 Chromium의 SwiftShader 소프트웨어 WebGL로 모바일 390×844, 데스크톱 1440×900을 검사했다. 두 화면 모두 가로 넘침과 JavaScript 오류가 없었다.
 - 모바일: 28,000개 draw 호출을 확인했다. 픽셀 샘플 1,024개 중 998개가 비어 있지 않았다. CDP 터치 입력에서 한 손가락은 일반 reticle, 두 손가락은 pinching reticle, 모두 떼면 reticle 제거를 확인했다.
 - 데스크톱: 100,000개 draw 호출과 비어 있지 않은 픽셀 샘플 959개를 확인했다.
+- 버튼 패드 입력은 자동화 브라우저에서 실제 pointerdown/up으로 확인한다: 방향 화살표는 카메라 없이 해당 위치에서 바람을 내고, 가운데 소용돌이 버튼은 누른 동안만 pinch 상태를 만든다. 포인터를 놓으면 효과가 해제된다.
 - 두 화면에서 카메라 권한 거부 모의 입력의 안내, 강제 WebGL 컨텍스트 손실 후 ASCII 전환, 컨텍스트 복원 후 GPU 복귀를 확인했다.
 - 실제 카메라의 손 영상 추론, 실물 휴대전화 Safari/Chrome, 하드웨어 GPU 성능 및 60fps는 검증하지 않았다. 원본 릴스와의 시각적 일치도 주장하지 않는다.
 - 이 노트와 코드는 같은 커밋으로 main에 기록하고 origin에 푸시한다.

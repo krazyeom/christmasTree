@@ -48,6 +48,69 @@ export default function Home() {
     active: false,
     isDown: false,
   });
+  const [buttonControlDown, setButtonControlDown] = useState(false);
+  const [buttonControlPoint, setButtonControlPoint] = useState({ x: 0.5, y: 0.58 });
+  const buttonControlRef = useRef<HTMLDivElement>(null);
+
+  const moveButtonControl = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
+    const rect = buttonControlRef.current?.getBoundingClientRect();
+    if (!rect || !rect.width || !rect.height) return;
+    setButtonControlPoint({
+      x: Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)),
+      y: Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height)),
+    });
+  }, []);
+
+  const startButtonControl = useCallback((
+    swirl: boolean,
+    point: { x: number; y: number },
+    e: React.PointerEvent<HTMLButtonElement>,
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setButtonControlPoint(point);
+    setButtonControlDown(true);
+    setButtonControlSwirl(swirl);
+  }, []);
+
+  const [buttonControlSwirl, setButtonControlSwirl] = useState(false);
+  const startButtonControlKey = useCallback((
+    swirl: boolean,
+    point: { x: number; y: number },
+    e: React.KeyboardEvent<HTMLButtonElement>,
+  ) => {
+    if (e.key !== ' ' && e.key !== 'Enter') return;
+    e.preventDefault();
+    e.stopPropagation();
+    setButtonControlPoint(point);
+    setButtonControlDown(true);
+    setButtonControlSwirl(swirl);
+  }, []);
+  const stopButtonControlKey = useCallback((e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key !== ' ' && e.key !== 'Enter') return;
+    e.stopPropagation();
+    setButtonControlDown(false);
+  }, []);
+  const stopButtonControlBlur = useCallback((e: React.FocusEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    setButtonControlDown(false);
+  }, []);
+
+  const stopButtonControl = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    setButtonControlDown(false);
+  }, []);
+
+  useEffect(() => {
+    if (buttonControlDown) {
+      setPointerPos({ ...buttonControlPoint, active: true, isDown: buttonControlSwirl });
+      return;
+    }
+    if (!scenePointers.current.size && !handState.handDetected) {
+      setPointerPos(p => ({ ...p, active: false, isDown: false }));
+    }
+  }, [buttonControlDown, buttonControlPoint, buttonControlSwirl, handState.handDetected]);
 
   useEffect(() => {
     const unsub = handTracker.subscribe(setHandState);
@@ -376,8 +439,75 @@ export default function Home() {
           <span>magic {motion ? 'in progress' : 'paused'}</span>
         </div>
         <div className="scene-note">MADE OF LETTERS & LOVE</div>
+        <div className="snow-button-pad" ref={buttonControlRef} role="group" aria-label="눈송이 버튼 조작">
+          <button
+            type="button"
+            className="snow-pad-button snow-pad-up"
+            aria-label="눈송이를 위로 밀기"
+            onPointerDown={e => startButtonControl(false, { x: 0.5, y: 0.35 }, e)}
+            onPointerMove={e => buttonControlDown && !buttonControlSwirl && moveButtonControl(e)}
+            onPointerUp={stopButtonControl}
+            onPointerCancel={stopButtonControl}
+            onLostPointerCapture={stopButtonControl}
+            onKeyDown={e => startButtonControlKey(false, { x: 0.5, y: 0.35 }, e)}
+            onKeyUp={stopButtonControlKey}
+            onBlur={stopButtonControlBlur}
+          >↑</button>
+          <button
+            type="button"
+            className="snow-pad-button snow-pad-left"
+            aria-label="눈송이를 왼쪽으로 밀기"
+            onPointerDown={e => startButtonControl(false, { x: 0.25, y: 0.58 }, e)}
+            onPointerMove={e => buttonControlDown && !buttonControlSwirl && moveButtonControl(e)}
+            onPointerUp={stopButtonControl}
+            onPointerCancel={stopButtonControl}
+            onLostPointerCapture={stopButtonControl}
+            onKeyDown={e => startButtonControlKey(false, { x: 0.25, y: 0.58 }, e)}
+            onKeyUp={stopButtonControlKey}
+            onBlur={stopButtonControlBlur}
+          >←</button>
+          <button
+            type="button"
+            className={`snow-pad-button snow-pad-center ${buttonControlDown && buttonControlSwirl ? 'active' : ''}`}
+            aria-label="눈송이 소용돌이 만들기"
+            onPointerDown={e => startButtonControl(true, { x: 0.5, y: 0.58 }, e)}
+            onPointerMove={e => buttonControlDown && buttonControlSwirl && moveButtonControl(e)}
+            onPointerUp={stopButtonControl}
+            onPointerCancel={stopButtonControl}
+            onLostPointerCapture={stopButtonControl}
+            onKeyDown={e => startButtonControlKey(true, { x: 0.5, y: 0.58 }, e)}
+            onKeyUp={stopButtonControlKey}
+            onBlur={stopButtonControlBlur}
+          >✧</button>
+          <button
+            type="button"
+            className="snow-pad-button snow-pad-right"
+            aria-label="눈송이를 오른쪽으로 밀기"
+            onPointerDown={e => startButtonControl(false, { x: 0.75, y: 0.58 }, e)}
+            onPointerMove={e => buttonControlDown && !buttonControlSwirl && moveButtonControl(e)}
+            onPointerUp={stopButtonControl}
+            onPointerCancel={stopButtonControl}
+            onLostPointerCapture={stopButtonControl}
+            onKeyDown={e => startButtonControlKey(false, { x: 0.75, y: 0.58 }, e)}
+            onKeyUp={stopButtonControlKey}
+            onBlur={stopButtonControlBlur}
+          >→</button>
+          <button
+            type="button"
+            className="snow-pad-button snow-pad-down"
+            aria-label="눈송이를 아래로 밀기"
+            onPointerDown={e => startButtonControl(false, { x: 0.5, y: 0.8 }, e)}
+            onPointerMove={e => buttonControlDown && !buttonControlSwirl && moveButtonControl(e)}
+            onPointerUp={stopButtonControl}
+            onPointerCancel={stopButtonControl}
+            onLostPointerCapture={stopButtonControl}
+            onKeyDown={e => startButtonControlKey(false, { x: 0.5, y: 0.8 }, e)}
+            onKeyUp={stopButtonControlKey}
+            onBlur={stopButtonControlBlur}
+          >↓</button>
+        </div>
       </div>
-      <p className="snow-gesture-help">한 손가락으로 밀기 · 두 손가락으로 모아 소용돌이 · 마우스는 누른 채 움직이기</p>
+      <p className="snow-gesture-help">버튼을 누른 채로 눈 밀기 · 가운데 ✧를 누르면 소용돌이 · 또는 한/두 손가락으로 조작</p>
       <CodeStream motion={motion} styleLabel={currentStyle.label} styleName={currentStyle.name} />
       <div className="dev-status" aria-hidden="true">
         <span><b>❯</b> npm run christmas -- --style={variant}</span>
