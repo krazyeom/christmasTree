@@ -161,9 +161,9 @@ void main() {
 
   // 깊이에 따른 크기 및 투명도
   float pSize = size * u_pointScale * (0.65 + depth * 0.85);
-  gl_PointSize = clamp(pSize, 1.5, 18.0);
+  gl_PointSize = clamp(pSize, 1.0, 5.0);
 
-  v_alpha = 0.35 + depth * 0.55 + sparkle * 0.15;
+  v_alpha = 0.06 + depth * 0.18 + sparkle * 0.06;
 }
 `;
 
@@ -196,7 +196,8 @@ void main() {
   // 중심 코어는 밝은 백색
   vec3 finalColor = mix(baseColor, vec3(1.0, 1.0, 1.0), core * 0.85);
 
-  fragColor = vec4(finalColor, (intensity * v_alpha) * 0.92);
+  float alpha = clamp(intensity * v_alpha, 0.0, 0.4);
+  fragColor = vec4(finalColor * alpha, alpha);
 }
 `;
 
@@ -432,7 +433,7 @@ export default function SnowWebGL2({
         initialVel[i * 3 + 2] = 0;
 
         initialMeta[i * 4 + 0] = Math.random(); // phase
-        initialMeta[i * 4 + 1] = 2.5 + Math.random() * 4.5; // size
+        initialMeta[i * 4 + 1] = 0.65 + Math.random() * 1.35; // size
         initialMeta[i * 4 + 2] = 1.0; // life
         initialMeta[i * 4 + 3] = 0.5 + Math.random() * 0.5; // mass
       }
@@ -601,7 +602,7 @@ export default function SnowWebGL2({
         gl.uniform1f(uRenPointScale, Math.min(window.devicePixelRatio || 1, 2));
 
         gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE); // 가산 혼합(Additive Glow)으로 환상적인 눈송이 발광 연출
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); // Premultiplied alpha keeps the tree visible under dense snow.
 
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT);
