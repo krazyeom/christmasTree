@@ -9,7 +9,7 @@ interface SnowWebGL2Props {
   motion: boolean;
   burst: number;
   handState: HandTrackingState;
-  pointerPos: { x: number; y: number; active: boolean; isDown: boolean };
+  pointerPos: { x: number; y: number; active: boolean; isDown: boolean; fingerCount?: number };
   onStatusChange?: (status: {
     supported: boolean;
     active: boolean;
@@ -35,6 +35,7 @@ uniform vec2 u_handPos;       // clip space [-1, 1]
 uniform vec2 u_handVelocity;  // clip space velocity
 uniform int u_handActive;
 uniform int u_isPinching;
+uniform int u_fingerCount;
 uniform float u_burst;
 uniform vec2 u_resolution;
 
@@ -71,28 +72,62 @@ void main() {
     toHand.x *= aspect;
     float dist = length(toHand);
 
-    if (u_isPinching == 1) {
-      // [핀치 제스처: 소용돌이 흡인 블랙홀 효과]
+    if (u_fingerCount == 1 && u_isPinching == 0) {
+      // 한 손가락: 넓게 밀어내기
+      float radius = 0.38;
+      if (dist < radius) {
+        vec2 away = pos.xy - u_handPos;
+        vec2 pushDir = away / max(length(away), 0.0001);
+        float strength = (1.0 - dist / radius) * 2.8;
+        vel.xy += pushDir * strength * dt + u_handVelocity * (1.0 - dist / radius) * 1.1;
+      }
+    } else if (u_fingerCount == 2 || u_isPinching == 1) {
+      // 두 손가락 또는 엄지-검지 핀치: 소용돌이 흡인
       if (dist < 0.85) {
         vec2 normDir = toHand / max(dist, 0.0001);
         vec2 tangent = vec2(-normDir.y, normDir.x);
-        float pullStrength = (1.0 - smoothstep(0.0, 0.85, dist)) * 4.2;
-        float vortexStrength = (1.0 - smoothstep(0.0, 0.85, dist)) * 3.5;
-
-        vel.xy += (normDir * pullStrength + tangent * vortexStrength) * dt * (1.2 / max(mass, 0.5));
+        float falloff = 1.0 - smoothstep(0.0, 0.85, dist);
+        vel.xy += (normDir * 4.2 + tangent * 3.5) * falloff * dt * (1.2 / max(mass, 0.5));
       }
-    } else {
-      // [열린 손 / 포인터 이동: 바람 밀쳐내기 및 반발 효과]
-      if (dist < 0.32) {
+    } else if (u_fingerCount == 3) {
+      // 세 손가락: 회전하는 바람 띠
+      if (dist < 0.68) {
+        vec2 normDir = toHand / max(dist, 0.0001);
+        vec2 tangent = vec2(-normDir.y, normDir.x);
+        float falloff = 1.0 - smoothstep(0.05, 0.68, dist);
+        vel.xy += tangent * 4.5 * falloff * dt;
+        vel.xy += normDir * sin(u_time * 5.0 + phase * 6.28) * 1.1 * falloff * dt;
+      }
+    } else if (u_fingerCount == 4) {
+      // 네 손가락: 넓은 반경으로 강하게 흩뿌리기
+      if (dist < 0.82) {
         vec2 away = pos.xy - u_handPos;
         vec2 pushDir = away / max(length(away), 0.0001);
-        float pushStrength = (1.0 - dist / 0.32) * 1.8;
-        vel.xy += pushDir * pushStrength * dt;
-
-        // 손의 이동 속도 전달 (돌풍)
-        vel.xy += u_handVelocity * (1.0 - dist / 0.32) * 0.8;
+        vel.xy += pushDir * (1.0 - dist / 0.82) * 5.2 * dt;
       }
+    } else if (u_fingerCount >= 5) {
+      // 다섯 손가락: 눈송이를 손 위치로 모으는 강한 흡인
+      if (dist < 1.0) {
+        vec2 normDir = toHand / max(dist, 0.0001);
+        float falloff = 1.0 - smoothstep(0.0, 1.0, dist);
+        vel.xy += normDir * 7.0 * falloff * dt / max(mass, 0.5);
+      }
+    } else if (u_isPinching == 1) {
+      if (dist < 0.85) {
+        vec2 normDir = toHand / max(dist, 0.0001);
+        vec2 tangent = vec2(-normDir.y, normDir.x);
+        float falloff = 1.0 - smoothstep(0.0, 0.85, dist);
+        vel.xy += (normDir * 4.2 + tangent * 3.5) * falloff * dt * (1.2 / max(mass, 0.5));
+      }
+    } else if (dist < 0.32) {
+      // 마우스·펜·버튼: 기본 눈 밀기
+      vec2 away = pos.xy - u_handPos;
+      vec2 pushDir = away / max(length(away), 0.0001);
+      float pushStrength = (1.0 - dist / 0.32) * 1.8;
+      vel.xy += pushDir * pushStrength * dt;
+      vel.xy += u_handVelocity * (1.0 - dist / 0.32) * 0.8;
     }
+  }
   }
 
   // 4. 버스트(선물 클릭) 파동 효과
@@ -227,6 +262,7 @@ export default function SnowWebGL2({
     vx: 0,
     vy: 0,
     isPinching: false,
+    fingerCount: 0,
   });
 
   useEffect(() => {
@@ -245,6 +281,7 @@ export default function SnowWebGL2({
         vx: handState.velocityX * 2,
         vy: -handState.velocityY * 2,
         isPinching: handState.isPinching,
+        fingerCount: handState.fingerCount,
       };
     } else if (pointerPos.active) {
       activeInputRef.current = {
@@ -254,6 +291,7 @@ export default function SnowWebGL2({
         vx: 0,
         vy: 0,
         isPinching: pointerPos.isDown,
+        fingerCount: pointerPos.active ? (pointerPos.fingerCount ?? (pointerPos.isDown ? 2 : 1)) : 0,
       };
     } else {
       activeInputRef.current.active = false;
@@ -515,6 +553,7 @@ export default function SnowWebGL2({
       const uSimHandVel = gl.getUniformLocation(simProg, 'u_handVelocity');
       const uSimHandActive = gl.getUniformLocation(simProg, 'u_handActive');
       const uSimPinch = gl.getUniformLocation(simProg, 'u_isPinching');
+      const uSimFingerCount = gl.getUniformLocation(simProg, 'u_fingerCount');
       const uSimBurst = gl.getUniformLocation(simProg, 'u_burst');
       const uSimRes = gl.getUniformLocation(simProg, 'u_resolution');
 
@@ -578,6 +617,7 @@ export default function SnowWebGL2({
           gl.uniform2f(uSimHandVel, input.vx, input.vy);
           gl.uniform1i(uSimHandActive, input.active ? 1 : 0);
           gl.uniform1i(uSimPinch, input.isPinching ? 1 : 0);
+          gl.uniform1i(uSimFingerCount, input.fingerCount);
           gl.uniform1f(uSimBurst, burstDecayRef.current);
           gl.uniform2f(uSimRes, width, height);
 

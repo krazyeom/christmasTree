@@ -83,17 +83,19 @@ footer a{color:#c8d7c5;text-decoration:underline;text-underline-offset:3px}foote
 .scene{touch-action:none}
 .snow-gesture-help{margin:0;padding:10px 14px;color:#a8baaa;font-size:11px;text-align:center;line-height:1.6;border-top:1px solid var(--line)}
 /* Hold buttons for direct, camera-free snow control. */
-.snow-button-pad{position:absolute;right:18px;top:50%;transform:translateY(-50%);z-index:6;width:138px;height:138px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);grid-template-areas:'. up .' 'left center right' '. down .';gap:5px;opacity:.58;transition:opacity .18s;touch-action:none}
+.snow-button-pad{position:absolute;right:18px;top:50%;transform:translateY(-50%);z-index:6;width:138px;height:138px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);grid-template-areas:'one . two' '. three .' 'four . five';gap:5px;opacity:.78;transition:opacity .18s;touch-action:none}
 .snow-button-pad:hover,.snow-button-pad:focus-within{opacity:1}
+.finger-count-badge{position:absolute;z-index:5;left:50%;top:20px;transform:translateX(-50%);max-width:calc(100% - 24px);padding:7px 12px;border:1px solid #446453;border-radius:20px;background:rgba(8,22,16,.78);color:#f3cf7a;font:10px monospace;white-space:nowrap;pointer-events:none}
 .snow-pad-button{display:flex;align-items:center;justify-content:center;min-width:38px;min-height:38px;border:1px solid rgba(205,230,216,.35);border-radius:50%;background:rgba(8,22,16,.74);backdrop-filter:blur(8px);color:#d6ecdf;font-size:18px;line-height:1;user-select:none;-webkit-user-select:none;touch-action:none;box-shadow:0 2px 12px rgba(0,0,0,.25);transition:transform .12s,background .12s,border-color .12s}
 .snow-pad-button:hover,.snow-pad-button:focus-visible{border-color:#c6e8d3;background:rgba(36,76,55,.9)}
 .snow-pad-button:active,.snow-pad-button.active{transform:scale(.93);background:rgba(203,173,95,.88);color:#101a12;border-color:#f4d889}
-.snow-pad-up{grid-area:up}.snow-pad-left{grid-area:left}.snow-pad-center{grid-area:center}.snow-pad-right{grid-area:right}.snow-pad-down{grid-area:down}
+.finger-pad-1{grid-area:one}.finger-pad-2{grid-area:two}.finger-pad-3{grid-area:three}.finger-pad-4{grid-area:four}.finger-pad-5{grid-area:five}.finger-pad-button{font-weight:700;font-size:15px}
 .snow-button-pad button{touch-action:none}
 
 @media(max-width:640px){
-  .snow-button-pad{right:8px;width:112px;height:112px;gap:3px;opacity:.72}
-  .snow-pad-button{min-width:34px;min-height:34px;font-size:16px}
+  .snow-button-pad{right:8px;width:112px;height:112px;gap:3px;opacity:.88}
+  .snow-pad-button{min-width:34px;min-height:34px;font-size:15px}
+  .finger-count-badge{top:12px;font-size:9px}
 }
 
 @media(max-width:640px){

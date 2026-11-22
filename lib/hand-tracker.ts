@@ -15,6 +15,7 @@ export interface HandTrackingState {
   thumbX: number;
   thumbY: number;
   isPinching: boolean;
+  fingerCount: number;
   pinchDistance: number;
   velocityX: number;
   velocityY: number;
@@ -23,6 +24,32 @@ export interface HandTrackingState {
 }
 
 export type HandStateListener = (state: HandTrackingState) => void;
+
+export function countExtendedFingers(landmarks: HandPoint[]): number {
+  if (landmarks.length < 21) return 0;
+  const wrist = landmarks[0];
+  const indexMcp = landmarks[5];
+  const fingerCount = [
+    { tip: 8, pip: 6, mcp: 5 },
+    { tip: 12, pip: 10, mcp: 9 },
+    { tip: 16, pip: 14, mcp: 13 },
+    { tip: 20, pip: 18, mcp: 17 },
+  ].reduce((count, finger) => {
+    const tip = landmarks[finger.tip];
+    const pip = landmarks[finger.pip];
+    const mcp = landmarks[finger.mcp];
+    const tipReach = Math.hypot(tip.x - wrist.x, tip.y - wrist.y);
+    const pipReach = Math.hypot(pip.x - wrist.x, pip.y - wrist.y);
+    const fingerLength = Math.hypot(tip.x - mcp.x, tip.y - mcp.y);
+    const palmScale = Math.hypot(indexMcp.x - wrist.x, indexMcp.y - wrist.y);
+    return count + (tipReach > pipReach + palmScale * 0.12 && fingerLength > palmScale * 0.65 ? 1 : 0);
+  }, 0);
+  const thumbTip = landmarks[4];
+  const thumbIp = landmarks[3];
+  const thumbExtended = Math.hypot(thumbTip.x - indexMcp.x, thumbTip.y - indexMcp.y)
+    > Math.hypot(thumbIp.x - indexMcp.x, thumbIp.y - indexMcp.y) + 0.025;
+  return Math.min(5, fingerCount + (thumbExtended ? 1 : 0));
+}
 
 class HandTrackerService {
   private videoEl: HTMLVideoElement | null = null;
@@ -46,6 +73,7 @@ class HandTrackerService {
     thumbX: 0.5,
     thumbY: 0.5,
     isPinching: false,
+    fingerCount: 0,
     pinchDistance: 1,
     velocityX: 0,
     velocityY: 0,
@@ -250,6 +278,8 @@ class HandTrackerService {
             // 핀치 감지 임계값 (0.07 이하일 때 핀치 인식)
             const isPinching = pinchDistance < 0.075;
 
+            const detectedFingerCount = countExtendedFingers(landmarks);
+
             // 속도 계산 (검지 기준)
             const instantVx = this.state.handDetected ? (index.x - this.lastTipX) * 30 : 0;
             const instantVy = this.state.handDetected ? (index.y - this.lastTipY) * 30 : 0;
@@ -266,6 +296,7 @@ class HandTrackerService {
               thumbX: thumb.x,
               thumbY: thumb.y,
               isPinching,
+              fingerCount: detectedFingerCount,
               pinchDistance,
               velocityX: this.smoothedVx,
               velocityY: this.smoothedVy,
@@ -276,6 +307,7 @@ class HandTrackerService {
               handDetected: false,
               landmarks: null,
               isPinching: false,
+              fingerCount: 0,
               velocityX: 0,
               velocityY: 0,
             });

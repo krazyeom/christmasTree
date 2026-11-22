@@ -6,6 +6,32 @@ import http from 'node:http';
 
 const root = process.cwd();
 
+test('finger count distinguishes one through five extended fingers', async () => {
+  const { countExtendedFingers } = await import('../lib/hand-tracker.ts');
+  const makeHand = (count) => {
+    const points = Array.from({ length: 21 }, () => ({ x: 0.5, y: 0.5, z: 0 }));
+    points[0] = { x: 0.5, y: 0.8, z: 0 };
+    const fingers = [
+      { mcp: 5, pip: 6, tip: 8, x: 0.3 },
+      { mcp: 9, pip: 10, tip: 12, x: 0.43 },
+      { mcp: 13, pip: 14, tip: 16, x: 0.56 },
+      { mcp: 17, pip: 18, tip: 20, x: 0.69 },
+    ];
+    for (const finger of fingers) {
+      points[finger.mcp] = { x: finger.x, y: 0.62, z: 0 };
+      points[finger.pip] = { x: finger.x, y: 0.47, z: 0 };
+      points[finger.tip] = { x: finger.x, y: count > 0 && fingers.indexOf(finger) < count ? 0.28 : 0.58, z: 0 };
+    }
+    points[2] = { x: 0.38, y: 0.72, z: 0 };
+    points[3] = { x: 0.34, y: 0.64, z: 0 };
+    points[4] = { x: 0.3, y: count === 5 ? 0.52 : 0.68, z: 0 };
+    return points;
+  };
+  for (let count = 1; count <= 5; count++) {
+    assert.equal(countExtendedFingers(makeHand(count)), count, `${count} extended fingers should be counted`);
+  }
+});
+
 test('MediaPipe assets are present and readable', () => {
   const modelPath = path.join(root, 'public/mediapipe/hand_landmarker.task');
   const wasmPath = path.join(root, 'public/mediapipe/wasm/vision_wasm_internal.wasm');
